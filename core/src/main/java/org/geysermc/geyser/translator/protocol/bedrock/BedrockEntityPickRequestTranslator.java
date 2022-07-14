@@ -52,7 +52,7 @@ public class BedrockEntityPickRequestTranslator extends PacketTranslator<EntityP
         // Get the corresponding item
         String itemName;
         switch (entity.getDefinition().entityType()) {
-            case BOAT, CHEST_BOAT -> {
+            case BOAT -> {
                 // Include type of boat in the name
                 int variant = ((BoatEntity) entity).getVariant();
                 String typeOfBoat = switch (variant) {
@@ -61,10 +61,9 @@ public class BedrockEntityPickRequestTranslator extends PacketTranslator<EntityP
                     case 3 -> "jungle";
                     case 4 -> "acacia";
                     case 5 -> "dark_oak";
-                    case 6 -> "mangrove";
                     default -> "oak";
                 };
-                itemName = typeOfBoat + "_" + entity.getDefinition().entityType().name().toLowerCase(Locale.ROOT);
+                itemName = typeOfBoat + "_boat";
             }
             case LEASH_KNOT -> itemName = "lead";
             case CHEST_MINECART, COMMAND_BLOCK_MINECART, FURNACE_MINECART, HOPPER_MINECART, TNT_MINECART ->

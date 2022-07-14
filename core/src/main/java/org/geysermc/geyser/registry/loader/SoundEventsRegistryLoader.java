@@ -26,7 +26,7 @@
 package org.geysermc.geyser.registry.loader;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.github.steveice10.mc.protocol.data.game.level.event.LevelEvent;
+import com.github.steveice10.mc.protocol.data.game.level.event.SoundEvent;
 import com.nukkitx.protocol.bedrock.data.LevelEventType;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.geysermc.geyser.GeyserImpl;
@@ -41,37 +41,37 @@ import java.util.Map;
 /**
  * Loads sound effects from the given resource path.
  */
-public class SoundEventsRegistryLoader extends EffectRegistryLoader<Map<LevelEvent, LevelEventTranslator>> {
+public class SoundEventsRegistryLoader extends EffectRegistryLoader<Map<SoundEvent, LevelEventTranslator>> {
 
     @Override
-    public Map<LevelEvent, LevelEventTranslator> load(String input) {
+    public Map<SoundEvent, LevelEventTranslator> load(String input) {
         this.loadFile(input);
 
         Iterator<Map.Entry<String, JsonNode>> effectsIterator = this.get(input).fields();
-        Map<LevelEvent, LevelEventTranslator> soundEffects = new Object2ObjectOpenHashMap<>();
+        Map<SoundEvent, LevelEventTranslator> soundEffects = new Object2ObjectOpenHashMap<>();
         while (effectsIterator.hasNext()) {
             Map.Entry<String, JsonNode> entry = effectsIterator.next();
             JsonNode node = entry.getValue();
             try {
                 String type = node.get("type").asText();
-                LevelEvent javaEffect = null;
+                SoundEvent javaEffect = null;
                 LevelEventTranslator transformer = null;
                 switch (type) {
                     case "soundLevel" -> {
-                        javaEffect = LevelEvent.valueOf(entry.getKey());
+                        javaEffect = SoundEvent.valueOf(entry.getKey());
                         LevelEventType levelEventType = LevelEventType.valueOf(node.get("name").asText());
                         int data = node.has("data") ? node.get("data").intValue() : 0;
                         transformer = new SoundLevelEventTranslator(levelEventType, data);
                     }
                     case "soundEvent" -> {
-                        javaEffect = LevelEvent.valueOf(entry.getKey());
+                        javaEffect = SoundEvent.valueOf(entry.getKey());
                         com.nukkitx.protocol.bedrock.data.SoundEvent soundEvent = com.nukkitx.protocol.bedrock.data.SoundEvent.valueOf(node.get("name").asText());
                         String identifier = node.has("identifier") ? node.get("identifier").asText() : "";
                         int extraData = node.has("extraData") ? node.get("extraData").intValue() : -1;
                         transformer = new SoundEventEventTranslator(soundEvent, identifier, extraData);
                     }
                     case "playSound" -> {
-                        javaEffect = LevelEvent.valueOf(entry.getKey());
+                        javaEffect = SoundEvent.valueOf(entry.getKey());
                         String name = node.get("name").asText();
                         float volume = node.has("volume") ? node.get("volume").floatValue() : 1.0f;
                         boolean pitchSub = node.has("pitch_sub") && node.get("pitch_sub").booleanValue();
@@ -85,7 +85,7 @@ public class SoundEventsRegistryLoader extends EffectRegistryLoader<Map<LevelEve
                     soundEffects.put(javaEffect, transformer);
                 }
             } catch (Exception e) {
-                GeyserImpl.getInstance().getLogger().warning("Failed to map sound effect " + entry.getKey() + " : " + e);
+                GeyserImpl.getInstance().getLogger().warning("Failed to map sound effect " + entry.getKey() + " : " + e.toString());
             }
         }
         return soundEffects;

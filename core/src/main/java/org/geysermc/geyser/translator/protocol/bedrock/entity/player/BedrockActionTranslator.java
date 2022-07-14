@@ -25,6 +25,7 @@
 
 package org.geysermc.geyser.translator.protocol.bedrock.entity.player;
 
+import com.github.steveice10.mc.protocol.data.game.entity.metadata.Position;
 import com.github.steveice10.mc.protocol.data.game.entity.object.Direction;
 import com.github.steveice10.mc.protocol.data.game.entity.player.*;
 import com.github.steveice10.mc.protocol.packet.ingame.serverbound.player.ServerboundInteractPacket;
@@ -41,6 +42,7 @@ import com.nukkitx.protocol.bedrock.packet.*;
 import org.geysermc.geyser.entity.type.Entity;
 import org.geysermc.geyser.entity.type.ItemFrameEntity;
 import org.geysermc.geyser.entity.type.player.SessionPlayerEntity;
+import org.geysermc.geyser.level.block.BlockStateValues;
 import org.geysermc.geyser.registry.BlockRegistries;
 import org.geysermc.geyser.session.GeyserSession;
 import org.geysermc.geyser.translator.protocol.PacketTranslator;
@@ -127,13 +129,21 @@ public class BedrockActionTranslator extends PacketTranslator<PlayerActionPacket
                 session.setSprinting(false);
                 break;
             case DROP_ITEM:
-                ServerboundPlayerActionPacket dropItemPacket = new ServerboundPlayerActionPacket(PlayerAction.DROP_ITEM,
-                        vector, Direction.VALUES[packet.getFace()], session.getWorldCache().nextPredictionSequence());
+                Position position = new Position(vector.getX(), vector.getY(), vector.getZ());
+                ServerboundPlayerActionPacket dropItemPacket = new ServerboundPlayerActionPacket(PlayerAction.DROP_ITEM, position, Direction.VALUES[packet.getFace()]);
                 session.sendDownstreamPacket(dropItemPacket);
                 break;
             case STOP_SLEEP:
                 ServerboundPlayerCommandPacket stopSleepingPacket = new ServerboundPlayerCommandPacket(entity.getEntityId(), PlayerState.LEAVE_BED);
                 session.sendDownstreamPacket(stopSleepingPacket);
+                break;
+            case BLOCK_INTERACT:
+                // Client means to interact with a block; cancel bucket interaction, if any
+                if (session.getBucketScheduledFuture() != null) {
+                    session.getBucketScheduledFuture().cancel(true);
+                    session.setBucketScheduledFuture(null);
+                }
+                // Otherwise handled in BedrockInventoryTransactionTranslator
                 break;
             case START_BREAK:
                 // Start the block breaking animation
@@ -153,31 +163,26 @@ public class BedrockActionTranslator extends PacketTranslator<PlayerActionPacket
                 int blockUp = session.getGeyser().getWorldManager().getBlockAt(session, fireBlockPos);
                 String identifier = BlockRegistries.JAVA_IDENTIFIERS.get().get(blockUp);
                 if (identifier.startsWith("minecraft:fire") || identifier.startsWith("minecraft:soul_fire")) {
-                    ServerboundPlayerActionPacket startBreakingPacket = new ServerboundPlayerActionPacket(PlayerAction.START_DIGGING, fireBlockPos,
-                            Direction.VALUES[packet.getFace()], session.getWorldCache().nextPredictionSequence());
+                    ServerboundPlayerActionPacket startBreakingPacket = new ServerboundPlayerActionPacket(PlayerAction.START_DIGGING, new Position(fireBlockPos.getX(),
+                            fireBlockPos.getY(), fireBlockPos.getZ()), Direction.VALUES[packet.getFace()]);
                     session.sendDownstreamPacket(startBreakingPacket);
                     if (session.getGameMode() == GameMode.CREATIVE) {
                         break;
                     }
                 }
 
-                ServerboundPlayerActionPacket startBreakingPacket = new ServerboundPlayerActionPacket(PlayerAction.START_DIGGING,
-                        vector, Direction.VALUES[packet.getFace()], session.getWorldCache().nextPredictionSequence());
+                position = new Position(vector.getX(), vector.getY(), vector.getZ());
+                ServerboundPlayerActionPacket startBreakingPacket = new ServerboundPlayerActionPacket(PlayerAction.START_DIGGING, position, Direction.VALUES[packet.getFace()]);
                 session.sendDownstreamPacket(startBreakingPacket);
                 break;
             case CONTINUE_BREAK:
                 if (session.getGameMode() == GameMode.CREATIVE) {
                     break;
                 }
-                int breakingBlock = session.getBreakingBlock();
-                if (breakingBlock == -1) {
-                    break;
-                }
-
                 Vector3f vectorFloat = vector.toFloat();
                 LevelEventPacket continueBreakPacket = new LevelEventPacket();
                 continueBreakPacket.setType(LevelEventType.PARTICLE_CRACK_BLOCK);
-                continueBreakPacket.setData((session.getBlockMappings().getBedrockBlockId(breakingBlock)) | (packet.getFace() << 24));
+                continueBreakPacket.setData((session.getBlockMappings().getBedrockBlockId(session.getBreakingBlock())) | (packet.getFace() << 24));
                 continueBreakPacket.setPosition(vectorFloat);
                 session.sendUpstreamPacket(continueBreakPacket);
 
@@ -185,7 +190,7 @@ public class BedrockActionTranslator extends PacketTranslator<PlayerActionPacket
                 LevelEventPacket updateBreak = new LevelEventPacket();
                 updateBreak.setType(LevelEventType.BLOCK_UPDATE_BREAK);
                 updateBreak.setPosition(vectorFloat);
-                double breakTime = BlockUtils.getSessionBreakTime(session, BlockRegistries.JAVA_BLOCKS.get(breakingBlock)) * 20;
+                double breakTime = BlockUtils.getSessionBreakTime(session, BlockRegistries.JAVA_BLOCKS.get(session.getBreakingBlock())) * 20;
                 updateBreak.setData((int) (65535 / breakTime));
                 session.sendUpstreamPacket(updateBreak);
                 break;
@@ -202,13 +207,14 @@ public class BedrockActionTranslator extends PacketTranslator<PlayerActionPacket
                     }
                 }
 
-                ServerboundPlayerActionPacket abortBreakingPacket = new ServerboundPlayerActionPacket(PlayerAction.CANCEL_DIGGING, vector, Direction.DOWN, session.getWorldCache().nextPredictionSequence());
+                position = new Position(vector.getX(), vector.getY(), vector.getZ());
+                ServerboundPlayerActionPacket abortBreakingPacket = new ServerboundPlayerActionPacket(PlayerAction.CANCEL_DIGGING, position, Direction.DOWN);
                 session.sendDownstreamPacket(abortBreakingPacket);
                 LevelEventPacket stopBreak = new LevelEventPacket();
                 stopBreak.setType(LevelEventType.BLOCK_STOP_BREAK);
                 stopBreak.setPosition(vector.toFloat());
                 stopBreak.setData(0);
-                session.setBreakingBlock(-1);
+                session.setBreakingBlock(BlockStateValues.JAVA_AIR_ID);
                 session.sendUpstreamPacket(stopBreak);
                 break;
             case STOP_BREAK:

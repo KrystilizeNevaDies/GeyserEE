@@ -100,9 +100,4 @@ public class VersionCommand extends GeyserCommand {
             }
         }
     }
-
-    @Override
-    public boolean isSuggestedOpOnly() {
-        return true;
-    }
 }

@@ -25,6 +25,7 @@
 
 package org.geysermc.geyser.translator.protocol.bedrock;
 
+import com.github.steveice10.mc.protocol.data.game.entity.metadata.Position;
 import com.github.steveice10.mc.protocol.data.game.entity.object.Direction;
 import com.github.steveice10.mc.protocol.data.game.entity.player.Hand;
 import com.github.steveice10.mc.protocol.packet.ingame.serverbound.inventory.ServerboundContainerButtonClickPacket;
@@ -52,12 +53,11 @@ public class BedrockLecternUpdateTranslator extends PacketTranslator<LecternUpda
 
             // Emulate an interact packet
             ServerboundUseItemOnPacket blockPacket = new ServerboundUseItemOnPacket(
-                    packet.getBlockPosition(),
+                    new Position(packet.getBlockPosition().getX(), packet.getBlockPosition().getY(), packet.getBlockPosition().getZ()),
                     Direction.DOWN,
                     Hand.MAIN_HAND,
                     0, 0, 0, // Java doesn't care about these when dealing with a lectern
-                    false,
-                    session.getWorldCache().nextPredictionSequence());
+                    false);
             session.sendDownstreamPacket(blockPacket);
         } else {
             // Bedrock wants to either move a page or exit

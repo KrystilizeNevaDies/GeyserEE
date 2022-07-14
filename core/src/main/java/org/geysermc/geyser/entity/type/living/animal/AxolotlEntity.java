@@ -27,7 +27,6 @@ package org.geysermc.geyser.entity.type.living.animal;
 
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.BooleanEntityMetadata;
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.IntEntityMetadata;
-import com.github.steveice10.mc.protocol.data.game.entity.player.Hand;
 import com.nukkitx.math.vector.Vector3f;
 import com.nukkitx.protocol.bedrock.data.entity.EntityData;
 import com.nukkitx.protocol.bedrock.data.entity.EntityFlag;
@@ -65,7 +64,7 @@ public class AxolotlEntity extends AnimalEntity {
     }
 
     @Override
-    protected short getMaxAir() {
+    protected int getMaxAir() {
         return 6000;
     }
 
@@ -76,11 +75,11 @@ public class AxolotlEntity extends AnimalEntity {
 
     @Nonnull
     @Override
-    protected InteractionResult mobInteract(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected InteractionResult mobInteract(@Nonnull GeyserItemStack itemInHand) {
         if (EntityUtils.attemptToBucket(session, itemInHand)) {
             return InteractionResult.SUCCESS;
         } else {
-            return super.mobInteract(hand, itemInHand);
+            return super.mobInteract(itemInHand);
         }
     }
 }

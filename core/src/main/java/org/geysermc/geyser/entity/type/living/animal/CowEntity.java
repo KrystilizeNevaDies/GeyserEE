@@ -25,7 +25,6 @@
 
 package org.geysermc.geyser.entity.type.living.animal;
 
-import com.github.steveice10.mc.protocol.data.game.entity.player.Hand;
 import com.nukkitx.math.vector.Vector3f;
 import com.nukkitx.protocol.bedrock.data.SoundEvent;
 import com.nukkitx.protocol.bedrock.data.entity.EntityFlag;
@@ -45,9 +44,9 @@ public class CowEntity extends AnimalEntity {
 
     @Nonnull
     @Override
-    protected InteractiveTag testMobInteraction(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected InteractiveTag testMobInteraction(@Nonnull GeyserItemStack itemInHand) {
         if (getFlag(EntityFlag.BABY) || !itemInHand.getMapping(session).getJavaIdentifier().equals("minecraft:bucket")) {
-            return super.testMobInteraction(hand, itemInHand);
+            return super.testMobInteraction(itemInHand);
         }
 
         return InteractiveTag.MILK;
@@ -55,9 +54,9 @@ public class CowEntity extends AnimalEntity {
 
     @Nonnull
     @Override
-    protected InteractionResult mobInteract(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected InteractionResult mobInteract(@Nonnull GeyserItemStack itemInHand) {
         if (getFlag(EntityFlag.BABY) || !itemInHand.getMapping(session).getJavaIdentifier().equals("minecraft:bucket")) {
-            return super.mobInteract(hand, itemInHand);
+            return super.mobInteract(itemInHand);
         }
 
         session.playSoundEvent(SoundEvent.MILK, position);

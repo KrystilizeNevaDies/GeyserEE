@@ -25,7 +25,6 @@
 
 package org.geysermc.geyser.entity.type.living.animal.tameable;
 
-import com.github.steveice10.mc.protocol.data.game.entity.player.Hand;
 import com.nukkitx.math.vector.Vector3f;
 import com.nukkitx.protocol.bedrock.data.entity.EntityFlag;
 import org.geysermc.geyser.entity.EntityDefinition;
@@ -59,7 +58,7 @@ public class ParrotEntity extends TameableEntity {
 
     @Nonnull
     @Override
-    protected InteractiveTag testMobInteraction(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected InteractiveTag testMobInteraction(@Nonnull GeyserItemStack itemInHand) {
         String javaIdentifierStripped = itemInHand.getMapping(session).getJavaIdentifier().replace("minecraft:", "");
         boolean tame = getFlag(EntityFlag.TAMED);
         if (!tame && isTameFood(javaIdentifierStripped)) {
@@ -70,12 +69,12 @@ public class ParrotEntity extends TameableEntity {
             // Sitting/standing
             return getFlag(EntityFlag.SITTING) ? InteractiveTag.STAND : InteractiveTag.SIT;
         }
-        return super.testMobInteraction(hand, itemInHand);
+        return super.testMobInteraction(itemInHand);
     }
 
     @Nonnull
     @Override
-    protected InteractionResult mobInteract(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected InteractionResult mobInteract(@Nonnull GeyserItemStack itemInHand) {
         String javaIdentifierStripped = itemInHand.getMapping(session).getJavaIdentifier().replace("minecraft:", "");
         boolean tame = getFlag(EntityFlag.TAMED);
         if (!tame && isTameFood(javaIdentifierStripped)) {
@@ -86,6 +85,6 @@ public class ParrotEntity extends TameableEntity {
             // Sitting/standing
             return InteractionResult.SUCCESS;
         }
-        return super.mobInteract(hand, itemInHand);
+        return super.mobInteract(itemInHand);
     }
 }

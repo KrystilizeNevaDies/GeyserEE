@@ -52,9 +52,4 @@ public final class GeyserDirtyMetadata {
     public boolean hasEntries() {
         return !metadata.isEmpty();
     }
-
-    @Override
-    public String toString() {
-        return metadata.toString();
-    }
 }

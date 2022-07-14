@@ -26,7 +26,6 @@
 package org.geysermc.geyser.entity.type.living.animal.horse;
 
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.ByteEntityMetadata;
-import com.github.steveice10.mc.protocol.data.game.entity.player.Hand;
 import com.google.common.collect.ImmutableSet;
 import com.nukkitx.math.vector.Vector3f;
 import com.nukkitx.protocol.bedrock.data.entity.EntityData;
@@ -130,12 +129,12 @@ public class AbstractHorseEntity extends AnimalEntity {
 
     @Nonnull
     @Override
-    protected InteractiveTag testMobInteraction(Hand hand, @Nonnull GeyserItemStack itemInHand) {
-        return testHorseInteraction(hand, itemInHand);
+    protected InteractiveTag testMobInteraction(@Nonnull GeyserItemStack itemInHand) {
+        return testHorseInteraction(itemInHand);
     }
 
     @Nonnull
-    protected final InteractiveTag testHorseInteraction(@Nonnull Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected final InteractiveTag testHorseInteraction(@Nonnull GeyserItemStack itemInHand) {
         boolean isBaby = isBaby();
         if (!isBaby) {
             if (getFlag(EntityFlag.TAMED) && session.isSneaking()) {
@@ -143,7 +142,7 @@ public class AbstractHorseEntity extends AnimalEntity {
             }
 
             if (!passengers.isEmpty()) {
-                return super.testMobInteraction(hand, itemInHand);
+                return super.testMobInteraction(itemInHand);
             }
         }
 
@@ -172,7 +171,7 @@ public class AbstractHorseEntity extends AnimalEntity {
         }
 
         if (isBaby) {
-            return super.testMobInteraction(hand, itemInHand);
+            return super.testMobInteraction(itemInHand);
         } else {
             return InteractiveTag.MOUNT;
         }
@@ -180,12 +179,12 @@ public class AbstractHorseEntity extends AnimalEntity {
 
     @Nonnull
     @Override
-    protected InteractionResult mobInteract(Hand hand, @Nonnull GeyserItemStack itemInHand) {
-        return mobHorseInteract(hand, itemInHand);
+    protected InteractionResult mobInteract(@Nonnull GeyserItemStack itemInHand) {
+        return mobHorseInteract(itemInHand);
     }
 
     @Nonnull
-    protected final InteractionResult mobHorseInteract(@Nonnull Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected final InteractionResult mobHorseInteract(@Nonnull GeyserItemStack itemInHand) {
         boolean isBaby = isBaby();
         if (!isBaby) {
             if (getFlag(EntityFlag.TAMED) && session.isSneaking()) {
@@ -194,7 +193,7 @@ public class AbstractHorseEntity extends AnimalEntity {
             }
 
             if (!passengers.isEmpty()) {
-                return super.mobInteract(hand, itemInHand);
+                return super.mobInteract(itemInHand);
             }
         }
 
@@ -228,7 +227,7 @@ public class AbstractHorseEntity extends AnimalEntity {
         }
 
         if (isBaby) {
-            return super.mobInteract(hand, itemInHand);
+            return super.mobInteract(itemInHand);
         } else {
             // Attempt to mount
             // TODO client-set flags sitting standing?
@@ -250,15 +249,15 @@ public class AbstractHorseEntity extends AnimalEntity {
 
     /* Just a place to stuff common code for the undead variants without having duplicate code */
 
-    protected final InteractiveTag testUndeadHorseInteraction(@Nonnull Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected final InteractiveTag testUndeadHorseInteraction(@Nonnull GeyserItemStack itemInHand) {
         if (!getFlag(EntityFlag.TAMED)) {
             return InteractiveTag.NONE;
         } else if (isBaby()) {
-            return testHorseInteraction(hand, itemInHand);
+            return testHorseInteraction(itemInHand);
         } else if (session.isSneaking()) {
             return InteractiveTag.OPEN_CONTAINER;
         } else if (!passengers.isEmpty()) {
-            return testHorseInteraction(hand, itemInHand);
+            return testHorseInteraction(itemInHand);
         } else {
             if (session.getItemMappings().getStoredItems().saddle() == itemInHand.getJavaId()) {
                 return InteractiveTag.OPEN_CONTAINER;
@@ -272,16 +271,16 @@ public class AbstractHorseEntity extends AnimalEntity {
         }
     }
 
-    protected final InteractionResult undeadHorseInteract(@Nonnull Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected final InteractionResult undeadHorseInteract(@Nonnull GeyserItemStack itemInHand) {
         if (!getFlag(EntityFlag.TAMED)) {
             return InteractionResult.PASS;
         } else if (isBaby()) {
-            return mobHorseInteract(hand, itemInHand);
+            return mobHorseInteract(itemInHand);
         } else if (session.isSneaking()) {
             // Opens inventory
             return InteractionResult.SUCCESS;
         } else if (!passengers.isEmpty()) {
-            return mobHorseInteract(hand, itemInHand);
+            return mobHorseInteract(itemInHand);
         } else {
             // The client tests for saddle but it doesn't matter for us at this point.
             return InteractionResult.SUCCESS;

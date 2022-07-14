@@ -40,7 +40,6 @@ import org.geysermc.geyser.text.AsteriskSerializer;
 import org.geysermc.geyser.configuration.GeyserConfiguration;
 import org.geysermc.geyser.network.MinecraftProtocol;
 import org.geysermc.geyser.session.GeyserSession;
-import org.geysermc.geyser.util.CpuUtils;
 import org.geysermc.geyser.util.FileUtils;
 import org.geysermc.geyser.util.WebUtils;
 import org.geysermc.floodgate.util.DeviceOs;
@@ -65,7 +64,6 @@ public class DumpInfo {
 
     private final DumpInfo.VersionInfo versionInfo;
     private final int cpuCount;
-    private final String cpuName;
     private final Locale systemLocale;
     private final String systemEncoding;
     private Properties gitInfo;
@@ -82,7 +80,6 @@ public class DumpInfo {
         this.versionInfo = new VersionInfo();
 
         this.cpuCount = Runtime.getRuntime().availableProcessors();
-        this.cpuName = CpuUtils.tryGetProcessorName();
         this.systemLocale = Locale.getDefault();
         this.systemEncoding = System.getProperty("file.encoding");
 

@@ -26,7 +26,6 @@
 package org.geysermc.geyser.entity.type.living;
 
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.ByteEntityMetadata;
-import com.github.steveice10.mc.protocol.data.game.entity.player.Hand;
 import com.nukkitx.math.vector.Vector3f;
 import com.nukkitx.protocol.bedrock.data.entity.EntityFlag;
 import org.geysermc.geyser.entity.EntityDefinition;
@@ -52,7 +51,7 @@ public class SnowGolemEntity extends GolemEntity {
 
     @Nonnull
     @Override
-    protected InteractiveTag testMobInteraction(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected InteractiveTag testMobInteraction(@Nonnull GeyserItemStack itemInHand) {
         if (session.getItemMappings().getStoredItems().shears() == itemInHand.getJavaId() && isAlive() && !getFlag(EntityFlag.SHEARED)) {
             // Shearing the snow golem
             return InteractiveTag.SHEAR;
@@ -62,7 +61,7 @@ public class SnowGolemEntity extends GolemEntity {
 
     @Nonnull
     @Override
-    protected InteractionResult mobInteract(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected InteractionResult mobInteract(@Nonnull GeyserItemStack itemInHand) {
         if (session.getItemMappings().getStoredItems().shears() == itemInHand.getJavaId() && isAlive() && !getFlag(EntityFlag.SHEARED)) {
             // Shearing the snow golem
             return InteractionResult.SUCCESS;

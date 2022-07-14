@@ -126,20 +126,14 @@ public class MinecraftLocale {
 
         // Check the locale isn't already loaded
         if (!ASSET_MAP.containsKey("minecraft/lang/" + locale + ".json") && !locale.equals("en_us")) {
-            if (loadLocale(locale)) {
-                GeyserImpl.getInstance().getLogger().debug("Loaded locale locally while not being in asset map: " + locale);
-            } else {
-                GeyserImpl.getInstance().getLogger().warning(GeyserLocale.getLocaleStringLog("geyser.locale.fail.invalid", locale));
-            }
+            GeyserImpl.getInstance().getLogger().warning(GeyserLocale.getLocaleStringLog("geyser.locale.fail.invalid", locale));
             return;
         }
 
         GeyserImpl.getInstance().getLogger().debug("Downloading and loading locale: " + locale);
 
         downloadLocale(locale);
-        if (!loadLocale(locale)) {
-            GeyserImpl.getInstance().getLogger().warning(GeyserLocale.getLocaleStringLog("geyser.locale.fail.missing", locale));
-        }
+        loadLocale(locale);
     }
 
     /**
@@ -205,7 +199,7 @@ public class MinecraftLocale {
      *
      * @param locale Locale to load
      */
-    private static boolean loadLocale(String locale) {
+    private static void loadLocale(String locale) {
         File localeFile = GeyserImpl.getInstance().getBootstrap().getConfigFolder().resolve("locales/" + locale + ".json").toFile();
 
         // Load the locale
@@ -248,9 +242,8 @@ public class MinecraftLocale {
             } catch (IOException e) {
                 throw new AssertionError(GeyserLocale.getLocaleStringLog("geyser.locale.fail.file", locale, e.getMessage()));
             }
-            return true;
         } else {
-            return false;
+            GeyserImpl.getInstance().getLogger().warning(GeyserLocale.getLocaleStringLog("geyser.locale.fail.missing", locale));
         }
     }
 
@@ -307,9 +300,9 @@ public class MinecraftLocale {
      * @return Translated string or the original message if it was not found in the given locale
      */
     public static String getLocaleString(String messageText, String locale) {
-        Map<String, String> localeStrings = LOCALE_MAPPINGS.get(locale.toLowerCase(Locale.ROOT));
+        Map<String, String> localeStrings = MinecraftLocale.LOCALE_MAPPINGS.get(locale.toLowerCase());
         if (localeStrings == null) {
-            localeStrings = LOCALE_MAPPINGS.get(GeyserLocale.getDefaultLocale());
+            localeStrings = MinecraftLocale.LOCALE_MAPPINGS.get(GeyserLocale.getDefaultLocale());
             if (localeStrings == null) {
                 // Don't cause a NPE if the locale is STILL missing
                 GeyserImpl.getInstance().getLogger().debug("MISSING DEFAULT LOCALE: " + GeyserLocale.getDefaultLocale());

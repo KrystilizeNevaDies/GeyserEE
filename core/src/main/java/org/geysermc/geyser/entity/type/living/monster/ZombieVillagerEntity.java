@@ -28,7 +28,6 @@ package org.geysermc.geyser.entity.type.living.monster;
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.EntityMetadata;
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.VillagerData;
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.BooleanEntityMetadata;
-import com.github.steveice10.mc.protocol.data.game.entity.player.Hand;
 import com.nukkitx.math.vector.Vector3f;
 import com.nukkitx.protocol.bedrock.data.entity.EntityData;
 import com.nukkitx.protocol.bedrock.data.entity.EntityFlag;
@@ -68,22 +67,22 @@ public class ZombieVillagerEntity extends ZombieEntity {
 
     @Nonnull
     @Override
-    protected InteractiveTag testMobInteraction(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected InteractiveTag testMobInteraction(@Nonnull GeyserItemStack itemInHand) {
         if (itemInHand.getJavaId() == session.getItemMappings().getStoredItems().goldenApple()) {
             return InteractiveTag.CURE;
         } else {
-            return super.testMobInteraction(hand, itemInHand);
+            return super.testMobInteraction(itemInHand);
         }
     }
 
     @Nonnull
     @Override
-    protected InteractionResult mobInteract(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected InteractionResult mobInteract(@Nonnull GeyserItemStack itemInHand) {
         if (itemInHand.getJavaId() == session.getItemMappings().getStoredItems().goldenApple()) {
             // The client doesn't know if the entity has weakness as that's not usually sent over the network
             return InteractionResult.CONSUME;
         } else {
-            return super.mobInteract(hand, itemInHand);
+            return super.mobInteract(itemInHand);
         }
     }
 }

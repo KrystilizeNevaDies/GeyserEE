@@ -26,7 +26,6 @@
 package org.geysermc.geyser.network.netty;
 
 import com.github.steveice10.packetlib.BuiltinFlags;
-import com.github.steveice10.packetlib.codec.PacketCodecHelper;
 import com.github.steveice10.packetlib.packet.PacketProtocol;
 import com.github.steveice10.packetlib.tcp.*;
 import io.netty.bootstrap.Bootstrap;
@@ -48,17 +47,15 @@ public final class LocalSession extends TcpSession {
 
     private final SocketAddress targetAddress;
     private final String clientIp;
-    private final PacketCodecHelper codecHelper;
 
-    public LocalSession(String host, int port, SocketAddress targetAddress, String clientIp, PacketProtocol protocol, PacketCodecHelper codecHelper) {
+    public LocalSession(String host, int port, SocketAddress targetAddress, String clientIp, PacketProtocol protocol) {
         super(host, port, protocol);
         this.targetAddress = targetAddress;
         this.clientIp = clientIp;
-        this.codecHelper = codecHelper;
     }
 
     @Override
-    public void connect(boolean wait) {
+    public void connect() {
         if (this.disconnected) {
             throw new IllegalStateException("Connection has already been disconnected.");
         }
@@ -103,11 +100,6 @@ public final class LocalSession extends TcpSession {
         } catch (Throwable t) {
             exceptionCaught(null, t);
         }
-    }
-
-    @Override
-    public PacketCodecHelper getCodecHelper() {
-        return this.codecHelper;
     }
 
     // TODO duplicate code

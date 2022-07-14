@@ -91,10 +91,8 @@ public class QueryPacketHandler {
         switch (type) {
             case HANDSHAKE:
                 sendToken();
-                break;
             case STATISTICS:
                 sendQueryData();
-                break;
         }
     }
 

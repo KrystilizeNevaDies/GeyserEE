@@ -25,6 +25,7 @@
 
 package org.geysermc.geyser.inventory.holder;
 
+import com.github.steveice10.mc.protocol.data.game.entity.metadata.Position;
 import com.google.common.collect.ImmutableSet;
 import com.nukkitx.math.vector.Vector3i;
 import com.nukkitx.nbt.NbtMap;
@@ -35,9 +36,9 @@ import com.nukkitx.protocol.bedrock.packet.ContainerOpenPacket;
 import com.nukkitx.protocol.bedrock.packet.UpdateBlockPacket;
 import org.geysermc.geyser.inventory.Container;
 import org.geysermc.geyser.inventory.Inventory;
-import org.geysermc.geyser.registry.BlockRegistries;
 import org.geysermc.geyser.session.GeyserSession;
 import org.geysermc.geyser.translator.inventory.InventoryTranslator;
+import org.geysermc.geyser.registry.BlockRegistries;
 import org.geysermc.geyser.util.BlockUtils;
 
 import java.util.Collections;
@@ -153,7 +154,8 @@ public class BlockInventoryHolder extends InventoryHolder {
         }
 
         Vector3i holderPos = inventory.getHolderPosition();
-        int realBlock = session.getGeyser().getWorldManager().getBlockAt(session, holderPos.getX(), holderPos.getY(), holderPos.getZ());
+        Position pos = new Position(holderPos.getX(), holderPos.getY(), holderPos.getZ());
+        int realBlock = session.getGeyser().getWorldManager().getBlockAt(session, pos.getX(), pos.getY(), pos.getZ());
         UpdateBlockPacket blockPacket = new UpdateBlockPacket();
         blockPacket.setDataLayer(0);
         blockPacket.setBlockPosition(holderPos);

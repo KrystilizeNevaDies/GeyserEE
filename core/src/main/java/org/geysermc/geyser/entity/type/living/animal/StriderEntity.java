@@ -26,7 +26,6 @@
 package org.geysermc.geyser.entity.type.living.animal;
 
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.BooleanEntityMetadata;
-import com.github.steveice10.mc.protocol.data.game.entity.player.Hand;
 import com.nukkitx.math.vector.Vector3f;
 import com.nukkitx.protocol.bedrock.data.entity.EntityFlag;
 import org.geysermc.geyser.entity.type.Entity;
@@ -99,12 +98,12 @@ public class StriderEntity extends AnimalEntity {
 
     @Nonnull
     @Override
-    protected InteractiveTag testMobInteraction(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected InteractiveTag testMobInteraction(@Nonnull GeyserItemStack itemInHand) {
         if (!canEat(itemInHand) && getFlag(EntityFlag.SADDLED) && passengers.isEmpty() && !session.isSneaking()) {
             // Mount Strider
             return InteractiveTag.RIDE_STRIDER;
         } else {
-            InteractiveTag tag = super.testMobInteraction(hand, itemInHand);
+            InteractiveTag tag = super.testMobInteraction(itemInHand);
             if (tag != InteractiveTag.NONE) {
                 return tag;
             } else {
@@ -116,12 +115,12 @@ public class StriderEntity extends AnimalEntity {
 
     @Nonnull
     @Override
-    protected InteractionResult mobInteract(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected InteractionResult mobInteract(@Nonnull GeyserItemStack itemInHand) {
         if (!canEat(itemInHand) && getFlag(EntityFlag.SADDLED) && passengers.isEmpty() && !session.isSneaking()) {
             // Mount Strider
             return InteractionResult.SUCCESS;
         } else {
-            InteractionResult superResult = super.mobInteract(hand, itemInHand);
+            InteractionResult superResult = super.mobInteract(itemInHand);
             if (superResult.consumesAction()) {
                 return superResult;
             } else {

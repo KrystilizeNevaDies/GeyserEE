@@ -139,18 +139,6 @@ public class WorldBorder {
         return position.getX() > minX && position.getX() < maxX && position.getZ() > minZ && position.getZ() < maxZ;
     }
 
-    private static final int CLOSE_TO_BORDER = 5;
-
-    /**
-     * @return if the player is close to the border boundaries. Used to always indicate a border even if there is no
-     * warning blocks set.
-     */
-    public boolean isCloseToBorderBoundaries() {
-        Vector3f position = session.getPlayerEntity().getPosition();
-        return !(position.getX() > minX + CLOSE_TO_BORDER && position.getX() < maxX - CLOSE_TO_BORDER
-                && position.getZ() > minZ + CLOSE_TO_BORDER && position.getZ() < maxZ - CLOSE_TO_BORDER);
-    }
-
     /**
      * Confirms that the entity is within world border boundaries when they move.
      * Otherwise, if {@code adjustPosition} is true, this function will push the player back.
@@ -258,16 +246,16 @@ public class WorldBorder {
         float particlePosY = entityPosition.getY();
         float particlePosZ = entityPosition.getZ();
 
-        if (entityPosition.getX() > Math.min(warningMaxX, maxX - CLOSE_TO_BORDER)) {
+        if (entityPosition.getX() > warningMaxX) {
             drawWall(Vector3f.from(maxX, particlePosY, particlePosZ), true);
         }
-        if (entityPosition.getX() < Math.max(warningMinX, minX + CLOSE_TO_BORDER)) {
+        if (entityPosition.getX() < warningMinX) {
             drawWall(Vector3f.from(minX, particlePosY, particlePosZ), true);
         }
-        if (entityPosition.getZ() > Math.min(warningMaxZ, maxZ - CLOSE_TO_BORDER)) {
+        if (entityPosition.getZ() > warningMaxZ) {
             drawWall(Vector3f.from(particlePosX, particlePosY, maxZ), false);
         }
-        if (entityPosition.getZ() < Math.max(warningMinZ, minZ + CLOSE_TO_BORDER)) {
+        if (entityPosition.getZ() < warningMinZ) {
             drawWall(Vector3f.from(particlePosX, particlePosY, minZ), false);
         }
     }

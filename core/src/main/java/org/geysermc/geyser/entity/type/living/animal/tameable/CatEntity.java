@@ -28,7 +28,6 @@ package org.geysermc.geyser.entity.type.living.animal.tameable;
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.BooleanEntityMetadata;
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.ByteEntityMetadata;
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.IntEntityMetadata;
-import com.github.steveice10.mc.protocol.data.game.entity.player.Hand;
 import com.nukkitx.math.vector.Vector3f;
 import com.nukkitx.protocol.bedrock.data.entity.EntityData;
 import com.nukkitx.protocol.bedrock.data.entity.EntityFlag;
@@ -106,7 +105,7 @@ public class CatEntity extends TameableEntity {
 
     @Nonnull
     @Override
-    protected InteractiveTag testMobInteraction(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected InteractiveTag testMobInteraction(@Nonnull GeyserItemStack itemInHand) {
         boolean tamed = getFlag(EntityFlag.TAMED);
         if (tamed && ownerBedrockId == session.getPlayerEntity().getGeyserId()) {
             // Toggle sitting
@@ -118,7 +117,7 @@ public class CatEntity extends TameableEntity {
 
     @Nonnull
     @Override
-    protected InteractionResult mobInteract(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+    protected InteractionResult mobInteract(@Nonnull GeyserItemStack itemInHand) {
         boolean tamed = getFlag(EntityFlag.TAMED);
         if (tamed && ownerBedrockId == session.getPlayerEntity().getGeyserId()) {
             return InteractionResult.SUCCESS;

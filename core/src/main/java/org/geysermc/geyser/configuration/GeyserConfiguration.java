@@ -101,10 +101,6 @@ public interface GeyserConfiguration {
 
     boolean isAllowCustomSkulls();
 
-    int getMaxVisibleCustomSkulls();
-
-    int getCustomSkullRenderDistance();
-
     IMetricsInfo getMetrics();
 
     int getPendingAuthenticationTimeout();

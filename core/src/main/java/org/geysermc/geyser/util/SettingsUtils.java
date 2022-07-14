@@ -27,12 +27,13 @@ package org.geysermc.geyser.util;
 
 import com.github.steveice10.mc.protocol.data.game.entity.player.GameMode;
 import com.github.steveice10.mc.protocol.data.game.setting.Difficulty;
-import org.geysermc.cumulus.component.DropdownComponent;
-import org.geysermc.cumulus.form.CustomForm;
 import org.geysermc.geyser.GeyserImpl;
 import org.geysermc.geyser.level.GameRule;
-import org.geysermc.geyser.level.WorldManager;
 import org.geysermc.geyser.session.GeyserSession;
+import org.geysermc.geyser.level.WorldManager;
+import org.geysermc.cumulus.CustomForm;
+import org.geysermc.cumulus.component.DropdownComponent;
+import org.geysermc.cumulus.response.CustomFormResponse;
 import org.geysermc.geyser.text.GeyserLocale;
 import org.geysermc.geyser.text.MinecraftLocale;
 
@@ -114,7 +115,12 @@ public class SettingsUtils {
             }
         }
 
-        builder.validResultHandler((response) -> {
+        builder.responseHandler((form, responseData) -> {
+            CustomFormResponse response = form.parseResponse(responseData);
+            if (response.isClosed() || response.isInvalid()) {
+                return;
+            }
+
             if (showClientSettings) {
                 // Client can only see its coordinates if reducedDebugInfo is disabled and coordinates are enabled in geyser config.
                 if (session.getPreferencesCache().isAllowShowCoordinates()) {
