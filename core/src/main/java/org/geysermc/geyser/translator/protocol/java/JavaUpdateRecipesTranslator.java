@@ -38,6 +38,8 @@ import com.nukkitx.nbt.NbtMap;
 import com.nukkitx.protocol.bedrock.data.inventory.CraftingData;
 import com.nukkitx.protocol.bedrock.data.inventory.ItemData;
 import com.nukkitx.protocol.bedrock.packet.CraftingDataPacket;
+import com.nukkitx.protocol.bedrock.v465.Bedrock_v465;
+import com.nukkitx.protocol.bedrock.v475.Bedrock_v475;
 import com.nukkitx.protocol.bedrock.v486.Bedrock_v486;
 import it.unimi.dsi.fastutil.ints.*;
 import lombok.AllArgsConstructor;
@@ -78,13 +80,13 @@ public class JavaUpdateRecipesTranslator extends PacketTranslator<ClientboundUpd
 
     @Override
     public void translate(GeyserSession session, ClientboundUpdateRecipesPacket packet) {
-        Map<RecipeType, List<CraftingData>> recipeTypes = Registries.CRAFTING_DATA.forVersion(session.getUpstream().getProtocolVersion());
+        Map<RecipeType, List<CraftingData>> recipeTypes = Map.of();
         // Get the last known network ID (first used for the pregenerated recipes) and increment from there.
         int netId = InventoryUtils.LAST_RECIPE_NET_ID + 1;
 
-        boolean applySmithingRecipes = session.getUpstream().getProtocolVersion() >= Bedrock_v486.V486_CODEC.getProtocolVersion();
+        boolean applySmithingRecipes = session.getUpstream().getProtocolVersion() >= Bedrock_v465.V465_CODEC.getProtocolVersion();
 
-        Int2ObjectMap<GeyserRecipe> recipeMap = new Int2ObjectOpenHashMap<>(Registries.RECIPES.forVersion(session.getUpstream().getProtocolVersion()));
+        Int2ObjectMap<GeyserRecipe> recipeMap = Int2ObjectMaps.emptyMap();
         Int2ObjectMap<List<StoneCuttingRecipeData>> unsortedStonecutterData = new Int2ObjectOpenHashMap<>();
         CraftingDataPacket craftingDataPacket = new CraftingDataPacket();
         craftingDataPacket.setCleanRecipes(true);

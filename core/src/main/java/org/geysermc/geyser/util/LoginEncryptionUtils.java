@@ -30,9 +30,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.github.steveice10.mc.auth.service.MsaAuthenticationService;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.shaded.json.JSONObject;
 import com.nimbusds.jose.shaded.json.JSONValue;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.network.util.Preconditions;
 import com.nukkitx.protocol.bedrock.packet.LoginPacket;
 import com.nukkitx.protocol.bedrock.packet.ServerToClientHandshakePacket;
@@ -52,15 +56,16 @@ import org.geysermc.geyser.text.ChatColor;
 import org.geysermc.geyser.text.GeyserLocale;
 
 import javax.crypto.SecretKey;
+import javax.security.auth.login.LoginException;
 import java.io.IOException;
 import java.net.URI;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PublicKey;
+import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
-import java.util.Iterator;
-import java.util.UUID;
+import java.util.*;
 
 public class LoginEncryptionUtils {
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
@@ -136,26 +141,28 @@ public class LoginEncryptionUtils {
         try {
             GeyserImpl geyser = session.getGeyser();
 
-            boolean validChain = validateChainData(certChainData);
+//            boolean validChain = validateChainData(certChainData);
+//
+//            geyser.getLogger().debug(String.format("Is player data valid? %s", validChain));
 
-            geyser.getLogger().debug(String.format("Is player data valid? %s", validChain));
-
-            if (!validChain && !session.getGeyser().getConfig().isEnableProxyConnections()) {
-                session.disconnect(GeyserLocale.getLocaleStringLog("geyser.network.remote.invalid_xbox_account"));
-                return;
-            }
+//            if (!validChain && !session.getGeyser().getConfig().isEnableProxyConnections()) {
+//                session.disconnect(GeyserLocale.getLocaleStringLog("geyser.network.remote.invalid_xbox_account"));
+//                return;
+//            }
             JWSObject jwt = JWSObject.parse(certChainData.get(certChainData.size() - 1).asText());
             JsonNode payload = JSON_MAPPER.readTree(jwt.getPayload().toBytes());
-
-            if (payload.get("extraData").getNodeType() != JsonNodeType.OBJECT) {
-                throw new RuntimeException("AuthData was not found!");
-            }
+            System.out.println(payload);
+//
+//            if (payload.get("extraData").getNodeType() != JsonNodeType.OBJECT) {
+//                throw new RuntimeException("AuthData was not found!");
+//            }
 
             JsonNode extraData = payload.get("extraData");
+            System.out.println("data: " + extraData);
             session.setAuthenticationData(new AuthData(
                     extraData.get("displayName").asText(),
                     UUID.fromString(extraData.get("identity").asText()),
-                    extraData.get("XUID").asText()
+                    UUID.fromString(extraData.get("identity").asText()).toString()
             ));
 
             session.setCertChainData(certChainData);
@@ -175,7 +182,7 @@ public class LoginEncryptionUtils {
 
             if (EncryptionUtils.canUseEncryption()) {
                 try {
-                    LoginEncryptionUtils.startEncryptionHandshake(session, identityPublicKey);
+                    LoginEncryptionUtils.startEncryptionHandshake(session, identityPublicKey, clientDataJson);
                 } catch (Throwable e) {
                     // An error can be thrown on older Java 8 versions about an invalid key
                     if (geyser.getConfig().isDebugMode()) {
@@ -193,7 +200,7 @@ public class LoginEncryptionUtils {
         }
     }
 
-    private static void startEncryptionHandshake(GeyserSession session, PublicKey key) throws Exception {
+    private static void startEncryptionHandshake(GeyserSession session, PublicKey key, JsonNode clientData) throws Exception {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("EC");
         generator.initialize(new ECGenParameterSpec("secp384r1"));
         KeyPair serverKeyPair = generator.generateKeyPair();
@@ -203,8 +210,47 @@ public class LoginEncryptionUtils {
         session.getUpstream().getSession().enableEncryption(encryptionKey);
 
         ServerToClientHandshakePacket packet = new ServerToClientHandshakePacket();
-        packet.setJwt(EncryptionUtils.createHandshakeJwt(serverKeyPair, token).serialize());
+        packet.setJwt(getHandshakeJwt(serverKeyPair, token, clientData).serialize());
         session.sendUpstreamPacketImmediately(packet);
+    }
+
+    public static JWSObject getHandshakeJwt(KeyPair serverKeyPair, byte[] token, JsonNode clientData) throws LoginException {
+        // Education has a TenantID
+        if (!clientData.has("TenantId")) {
+            throw new LoginException("No TenantId found from client");
+        }
+
+        String tenantId = clientData.get("TenantId").asText();
+
+        // Lookup a signed token for the tenant
+        if (!TokenManager.INSTANCE.getTokenMap().containsKey(tenantId)) {
+            throw new LoginException("Unknown Tenant tried to connect: " + tenantId);
+        }
+
+        Map<String, String> claims = Map.of("signedToken",
+                TokenManager.INSTANCE.getTokenMap().get(tenantId).getSignedToken());
+
+        try {
+            return createHandshakeJwt(serverKeyPair, token, claims);
+        } catch (JOSEException e) {
+            throw new LoginException(e.toString());
+        }
+    }
+
+    protected static JWSObject createHandshakeJwt(KeyPair serverKeyPair, byte[] token, Map<String, String> claims) throws JOSEException {
+        URI x5u = URI.create(Base64.getEncoder().encodeToString(serverKeyPair.getPublic().getEncoded()));
+
+        JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder();
+        claimsBuilder.claim("salt", Base64.getEncoder().encodeToString(token));
+
+        for (Map.Entry<String, String> claim : claims.entrySet()) {
+            claimsBuilder.claim(claim.getKey(), claim.getValue());
+        }
+
+        SignedJWT jwt = new SignedJWT((new com.nimbusds.jose.JWSHeader.Builder(JWSAlgorithm.ES384)).x509CertURL(x5u).build(),
+                claimsBuilder.build());
+        EncryptionUtils.signJwt(jwt, (ECPrivateKey) serverKeyPair.getPrivate());
+        return jwt;
     }
 
     private static void sendEncryptionFailedMessage(GeyserImpl geyser) {

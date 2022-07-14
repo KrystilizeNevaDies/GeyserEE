@@ -30,6 +30,10 @@ import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
 import com.nukkitx.protocol.bedrock.data.ExperimentData;
 import com.nukkitx.protocol.bedrock.data.ResourcePackType;
 import com.nukkitx.protocol.bedrock.packet.*;
+import com.nukkitx.protocol.bedrock.v465.Bedrock_v465;
+import com.nukkitx.protocol.bedrock.v471.Bedrock_v471;
+import com.nukkitx.protocol.bedrock.v475.Bedrock_v475;
+import com.nukkitx.protocol.bedrock.v486.Bedrock_v486;
 import org.geysermc.geyser.GeyserImpl;
 import org.geysermc.geyser.configuration.GeyserConfiguration;
 import org.geysermc.geyser.pack.ResourcePack;
@@ -69,7 +73,7 @@ public class UpstreamPacketHandler extends LoggingPacketHandler {
             return true;
         }
 
-        BedrockPacketCodec packetCodec = MinecraftProtocol.getBedrockCodec(loginPacket.getProtocolVersion());
+        BedrockPacketCodec packetCodec = Bedrock_v465.V465_CODEC;
         if (packetCodec == null) {
             String supportedVersions = MinecraftProtocol.getAllSupportedBedrockVersions();
             if (loginPacket.getProtocolVersion() > MinecraftProtocol.DEFAULT_BEDROCK_CODEC.getProtocolVersion()) {
@@ -85,21 +89,31 @@ public class UpstreamPacketHandler extends LoggingPacketHandler {
         session.getUpstream().getSession().setPacketCodec(packetCodec);
 
         // Set the block translation based off of version
-        session.setBlockMappings(BlockRegistries.BLOCKS.forVersion(loginPacket.getProtocolVersion()));
-        session.setItemMappings(Registries.ITEMS.forVersion(loginPacket.getProtocolVersion()));
+        session.setBlockMappings(BlockRegistries.BLOCKS.forVersion(Bedrock_v465.V465_CODEC.getProtocolVersion()));
+        session.setItemMappings(Registries.ITEMS.forVersion(Bedrock_v465.V465_CODEC.getProtocolVersion()));
+
+        System.out.println(1);
 
         LoginEncryptionUtils.encryptPlayerConnection(session, loginPacket);
 
-        if (session.isClosed()) {
-            // Can happen if Xbox validation fails
-            return true;
-        }
+        System.out.println(2);
+
+//        if (session.isClosed()) {
+//            // Can happen if Xbox validation fails
+//            return true;
+//        }
+
+        System.out.println(3);
 
         PlayStatusPacket playStatus = new PlayStatusPacket();
         playStatus.setStatus(PlayStatusPacket.Status.LOGIN_SUCCESS);
         session.sendUpstreamPacket(playStatus);
 
+        System.out.println(4);
+
         geyser.getSessionManager().addPendingSession(session);
+
+        System.out.println(5);
 
         ResourcePacksInfoPacket resourcePacksInfo = new ResourcePacksInfoPacket();
         for(ResourcePack resourcePack : ResourcePack.PACKS.values()) {
@@ -111,7 +125,11 @@ public class UpstreamPacketHandler extends LoggingPacketHandler {
         resourcePacksInfo.setForcedToAccept(GeyserImpl.getInstance().getConfig().isForceResourcePacks());
         session.sendUpstreamPacket(resourcePacksInfo);
 
+        System.out.println(6);
+
         GeyserLocale.loadGeyserLocale(session.getLocale());
+
+        System.out.println(7);
         return true;
     }
 
@@ -160,7 +178,7 @@ public class UpstreamPacketHandler extends LoggingPacketHandler {
                     stackPacket.getResourcePacks().add(new ResourcePackStackPacket.Entry(header.getUuid().toString(), header.getVersionString(), ""));
                 }
 
-                if (session.getItemMappings().getFurnaceMinecartData() != null) {
+                if (session.getItemMappings() != null && session.getItemMappings().getFurnaceMinecartData() != null) {
                     // Allow custom items to work
                     stackPacket.getExperiments().add(new ExperimentData("data_driven_items", true));
                 }
