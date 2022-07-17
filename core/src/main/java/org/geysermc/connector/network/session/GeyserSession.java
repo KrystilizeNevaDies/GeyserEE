@@ -111,10 +111,6 @@ public class GeyserSession {
         this.handle.authenticate(username, password);
     }
 
-    public void authenticateWithMicrosoftCode() {
-        this.handle.authenticateWithMicrosoftCode();
-    }
-
     public void disconnect(String reason) {
         this.handle.disconnect(reason);
     }

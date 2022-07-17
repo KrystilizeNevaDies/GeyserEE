@@ -109,10 +109,7 @@ import org.geysermc.geyser.text.GeyserLocale;
 import org.geysermc.geyser.text.MinecraftLocale;
 import org.geysermc.geyser.translator.inventory.InventoryTranslator;
 import org.geysermc.geyser.translator.text.MessageTranslator;
-import org.geysermc.geyser.util.ChunkUtils;
-import org.geysermc.geyser.util.DimensionUtils;
-import org.geysermc.geyser.util.LoginEncryptionUtils;
-import org.geysermc.geyser.util.MathUtils;
+import org.geysermc.geyser.util.*;
 
 import java.net.ConnectException;
 import java.net.InetAddress;
@@ -623,56 +620,23 @@ public class GeyserSession implements GeyserConnection, CommandSender {
         authenticate(username, "");
     }
 
-    public void authenticate(String username, String password) {
+    public boolean authenticate(String username, String password) {
         if (loggedIn) {
             geyser.getLogger().severe(GeyserLocale.getLocaleStringLog("geyser.auth.already_loggedin", username));
-            return;
+            return true;
         }
 
         loggingIn = true;
 
+        boolean hasLogin = LocalLoginUtil.hasLogin(username, password);
+
+        if (!hasLogin) return false;
+
         // Use a future to prevent timeouts as all the authentication is handled sync
         // This will be changed with the new protocol library.
-        CompletableFuture.supplyAsync(() -> {
-            try {
-                if (password != null && !password.isEmpty()) {
-                    AuthenticationService authenticationService;
-                    if (microsoftAccount) {
-                        authenticationService = new MsaAuthenticationService(GeyserImpl.OAUTH_CLIENT_ID);
-                    } else {
-                        authenticationService = new MojangAuthenticationService();
-                    }
-                    authenticationService.setUsername(username);
-                    authenticationService.setPassword(password);
-                    authenticationService.login();
-
-                    GameProfile profile = authenticationService.getSelectedProfile();
-                    if (profile == null) {
-                        // Java account is offline
-                        disconnect(GeyserLocale.getPlayerLocaleString("geyser.network.remote.invalid_account", clientData.getLanguageCode()));
-                        return null;
-                    }
-
-                    protocol = new MinecraftProtocol(profile, authenticationService.getAccessToken());
-                } else {
-                    // always replace spaces when using Floodgate,
-                    // as usernames with spaces cause issues with Bungeecord's login cycle.
-                    // However, this doesn't affect the final username as Floodgate is still in charge of that.
-                    // So if you have (for example) replace spaces enabled on Floodgate the spaces will re-appear.
-                    String validUsername = username;
-                    if (remoteAuthType == AuthType.FLOODGATE) {
-                        validUsername = username.replace(' ', '_');
-                    }
-
-                    protocol = new MinecraftProtocol(validUsername);
-                }
-            } catch (InvalidCredentialsException | IllegalArgumentException e) {
-                geyser.getLogger().info(GeyserLocale.getLocaleStringLog("geyser.auth.login.invalid", username));
-                disconnect(GeyserLocale.getPlayerLocaleString("geyser.auth.login.invalid.kick", getClientData().getLanguageCode()));
-            } catch (RequestException ex) {
-                disconnect(ex.getMessage());
-            }
-            return null;
+        CompletableFuture.runAsync(() -> {
+            protocol = new MinecraftProtocol(username);
+            loggingIn = false;
         }).whenComplete((aVoid, ex) -> {
             if (ex != null) {
                 disconnect(ex.toString());
@@ -687,45 +651,46 @@ public class GeyserSession implements GeyserConnection, CommandSender {
 
             connectDownstream();
         });
+        return true;
     }
 
     /**
      * Present a form window to the user asking to log in with another web browser
      */
-    public void authenticateWithMicrosoftCode() {
-        if (loggedIn) {
-            geyser.getLogger().severe(GeyserLocale.getLocaleStringLog("geyser.auth.already_loggedin", getAuthData().name()));
-            return;
-        }
-
-        loggingIn = true;
-
-        // This just looks cool
-        SetTimePacket packet = new SetTimePacket();
-        packet.setTime(16000);
-        sendUpstreamPacket(packet);
-
-        // new thread so clients don't timeout
-        MsaAuthenticationService msaAuthenticationService = new MsaAuthenticationService(GeyserImpl.OAUTH_CLIENT_ID);
-
-        // Use a future to prevent timeouts as all the authentication is handled sync
-        // This will be changed with the new protocol library.
-        CompletableFuture.supplyAsync(() -> {
-            try {
-                return msaAuthenticationService.getAuthCode();
-            } catch (RequestException e) {
-                throw new CompletionException(e);
-            }
-        }).whenComplete((response, ex) -> {
-            if (ex != null) {
-                ex.printStackTrace();
-                disconnect(ex.toString());
-                return;
-            }
-            LoginEncryptionUtils.buildAndShowMicrosoftCodeWindow(this, response);
-            attemptCodeAuthentication(msaAuthenticationService);
-        });
-    }
+//    public void authenticateWithMicrosoftCode() {
+//        if (loggedIn) {
+//            geyser.getLogger().severe(GeyserLocale.getLocaleStringLog("geyser.auth.already_loggedin", getAuthData().name()));
+//            return;
+//        }
+//
+//        loggingIn = true;
+//
+//        // This just looks cool
+//        SetTimePacket packet = new SetTimePacket();
+//        packet.setTime(16000);
+//        sendUpstreamPacket(packet);
+//
+//        // new thread so clients don't timeout
+//        MsaAuthenticationService msaAuthenticationService = new MsaAuthenticationService(GeyserImpl.OAUTH_CLIENT_ID);
+//
+//        // Use a future to prevent timeouts as all the authentication is handled sync
+//        // This will be changed with the new protocol library.
+//        CompletableFuture.supplyAsync(() -> {
+//            try {
+//                return msaAuthenticationService.getAuthCode();
+//            } catch (RequestException e) {
+//                throw new CompletionException(e);
+//            }
+//        }).whenComplete((response, ex) -> {
+//            if (ex != null) {
+//                ex.printStackTrace();
+//                disconnect(ex.toString());
+//                return;
+//            }
+//            LoginEncryptionUtils.buildAndShowMicrosoftCodeWindow(this, response);
+//            attemptCodeAuthentication(msaAuthenticationService);
+//        });
+//    }
 
     /**
      * Poll every second to see if the user has successfully signed in

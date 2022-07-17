@@ -68,6 +68,7 @@ import java.util.Base64;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 public class LoginEncryptionUtils {
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
@@ -272,13 +273,13 @@ public class LoginEncryptionUtils {
         boolean isPasswordAuthEnabled = config.getRemote().isPasswordAuthentication();
 
         session.sendForm(
+//                String regex = "\\W";
                 SimpleForm.builder()
-                        .translator(GeyserLocale::getPlayerLocaleString, session.getLocale())
-                        .title("geyser.auth.login.form.notice.title")
-                        .content("geyser.auth.login.form.notice.desc")
-                        .optionalButton("geyser.auth.login.form.notice.btn_login.mojang", isPasswordAuthEnabled)
-                        .button("geyser.auth.login.form.notice.btn_login.microsoft")
-                        .button("geyser.auth.login.form.notice.btn_disconnect")
+                        .title("Login")
+                        .content("You need an account to login")
+                        .button("Login")
+                        .button("Register")
+                        .button("Cancel")
                         .responseHandler((form, responseData) -> {
                             SimpleFormResponse response = form.parseResponse(responseData);
                             if (!response.isCorrect()) {
@@ -288,19 +289,13 @@ public class LoginEncryptionUtils {
 
                             if (isPasswordAuthEnabled && response.getClickedButtonId() == 0) {
                                 session.setMicrosoftAccount(false);
-                                buildAndShowLoginDetailsWindow(session);
+                                loginForm(session);
                                 return;
                             }
 
                             if (isPasswordAuthEnabled && response.getClickedButtonId() == 1) {
-                                session.setMicrosoftAccount(true);
-                                buildAndShowMicrosoftAuthenticationWindow(session);
-                                return;
-                            }
-
-                            if (response.getClickedButtonId() == 0) {
-                                // Just show the OAuth code
-                                session.authenticateWithMicrosoftCode();
+                                session.setMicrosoftAccount(false);
+                                registerForm(session);
                                 return;
                             }
 
@@ -308,74 +303,156 @@ public class LoginEncryptionUtils {
                         }));
     }
 
-    public static void buildAndShowLoginDetailsWindow(GeyserSession session) {
-        session.sendForm(
-                CustomForm.builder()
-                        .translator(GeyserLocale::getPlayerLocaleString, session.getLocale())
-                        .title("geyser.auth.login.form.details.title")
-                        .label("geyser.auth.login.form.details.desc")
-                        .input("geyser.auth.login.form.details.email", "account@geysermc.org", "")
-                        .input("geyser.auth.login.form.details.pass", "123456", "")
-                        .responseHandler((form, responseData) -> {
-                            CustomFormResponse response = form.parseResponse(responseData);
-                            if (!response.isCorrect()) {
-                                buildAndShowLoginDetailsWindow(session);
-                                return;
-                            }
+    public static void loginForm(GeyserSession session) {
+        session.sendForm(CustomForm.builder()
+                .title("Login")
+                .label("Please enter your username and password")
+                .input("Username", "steve", "")
+                .input("Password", "SteveInMinecraft23", "")
+                .responseHandler((form, responseData) -> {
+                    CustomFormResponse response = form.parseResponse(responseData);
+                    if (response.isClosed()) {
+                        buildAndShowLoginWindow(session);
+                        return;
+                    }
+                    if (!response.isCorrect()) {
+                        loginForm(session);
+                        return;
+                    }
 
-                            session.authenticate(response.next(), response.next());
-                        }));
+                    String username = response.next();
+                    String password = response.next();
+
+                    if (!session.authenticate(username, password)) {
+                        incorrectTryAgainForm(session, "Failed to authenticate, incorrect username or password", LoginEncryptionUtils::loginForm);
+                        return;
+                    }
+                })
+        );
     }
+
+    public static void registerForm(GeyserSession session) {
+        session.sendForm(CustomForm.builder()
+                .title("Register")
+                .label("Please enter your username and password")
+                .input("Username", "steve", "")
+                .input("Password", "SteveInMinecraft23", "")
+                .responseHandler((form, responseData) -> {
+                    CustomFormResponse response = form.parseResponse(responseData);
+                    if (response.isClosed()) {
+                        buildAndShowLoginWindow(session);
+                        return;
+                    }
+                    if (!response.isCorrect()) {
+                        registerForm(session);
+                        return;
+                    }
+
+                    String username = response.next();
+                    String password = response.next();
+
+                    assert username != null;
+                    assert password != null;
+
+                    if (username.matches("\\W")) {
+                        incorrectTryAgainForm(session,
+                                "Invalid username, you can only use letters, numbers, and underscores.",
+                                LoginEncryptionUtils::registerForm);
+                        return;
+                    }
+
+                    if (LocalLoginUtil.hasUsername(username)) {
+                        incorrectTryAgainForm(session,
+                                "Username has been taken, please use another one.",
+                                LoginEncryptionUtils::registerForm);
+                        return;
+                    }
+
+                    LocalLoginUtil.insertLocally(username, password);
+                    if (!session.authenticate(username, password)) {
+                        throw new RuntimeException("Failed to authenticate after registering");
+                    }
+                })
+        );
+    }
+
+    public static void incorrectTryAgainForm(GeyserSession session, String error, Consumer<GeyserSession> onCancel) {
+        session.sendForm(SimpleForm.builder()
+                .title(error)
+                .content("Please try again")
+                .button("Try again")
+                .responseHandler((form, responseData) -> onCancel.accept(session))
+        );
+    }
+
+//    public static void buildAndShowLoginDetailsWindow(GeyserSession session) {
+//        session.sendForm(
+//                CustomForm.builder()
+//                        .translator(GeyserLocale::getPlayerLocaleString, session.getLocale())
+//                        .title("geyser.auth.login.form.details.title")
+//                        .label("geyser.auth.login.form.details.desc")
+//                        .input("geyser.auth.login.form.details.email", "account@geysermc.org", "")
+//                        .input("geyser.auth.login.form.details.pass", "123456", "")
+//                        .responseHandler((form, responseData) -> {
+//                            CustomFormResponse response = form.parseResponse(responseData);
+//                            if (!response.isCorrect()) {
+//                                buildAndShowLoginDetailsWindow(session);
+//                                return;
+//                            }
+//
+//                            session.authenticate(response.next(), response.next());
+//                        }));
+//    }
 
     /**
      * Prompts the user between either OAuth code login or manual password authentication
      */
-    public static void buildAndShowMicrosoftAuthenticationWindow(GeyserSession session) {
-        session.sendForm(
-                SimpleForm.builder()
-                        .translator(GeyserLocale::getPlayerLocaleString, session.getLocale())
-                        .title("geyser.auth.login.form.notice.btn_login.microsoft")
-                        .button("geyser.auth.login.method.browser")
-                        .button("geyser.auth.login.method.password")
-                        .button("geyser.auth.login.form.notice.btn_disconnect")
-                        .responseHandler((form, responseData) -> {
-                            SimpleFormResponse response = form.parseResponse(responseData);
-                            if (!response.isCorrect()) {
-                                buildAndShowLoginWindow(session);
-                                return;
-                            }
-
-                            if (response.getClickedButtonId() == 0) {
-                                session.authenticateWithMicrosoftCode();
-                            } else if (response.getClickedButtonId() == 1) {
-                                buildAndShowLoginDetailsWindow(session);
-                            } else {
-                                session.disconnect(GeyserLocale.getPlayerLocaleString("geyser.auth.login.form.disconnect", session.getLocale()));
-                            }
-                        }));
-    }
+//    public static void buildAndShowMicrosoftAuthenticationWindow(GeyserSession session) {
+//        session.sendForm(
+//                SimpleForm.builder()
+//                        .translator(GeyserLocale::getPlayerLocaleString, session.getLocale())
+//                        .title("geyser.auth.login.form.notice.btn_login.microsoft")
+//                        .button("geyser.auth.login.method.browser")
+//                        .button("geyser.auth.login.method.password")
+//                        .button("geyser.auth.login.form.notice.btn_disconnect")
+//                        .responseHandler((form, responseData) -> {
+//                            SimpleFormResponse response = form.parseResponse(responseData);
+//                            if (!response.isCorrect()) {
+//                                buildAndShowLoginWindow(session);
+//                                return;
+//                            }
+//
+//                            if (response.getClickedButtonId() == 0) {
+//                                session.authenticateWithMicrosoftCode();
+//                            } else if (response.getClickedButtonId() == 1) {
+//                                buildAndShowLoginDetailsWindow(session);
+//                            } else {
+//                                session.disconnect(GeyserLocale.getPlayerLocaleString("geyser.auth.login.form.disconnect", session.getLocale()));
+//                            }
+//                        }));
+//    }
 
     /**
      * Shows the code that a user must input into their browser
      */
-    public static void buildAndShowMicrosoftCodeWindow(GeyserSession session, MsaAuthenticationService.MsCodeResponse msCode) {
-        session.sendForm(
-                ModalForm.builder()
-                        .title("%xbox.signin")
-                        .content("%xbox.signin.website\n%xbox.signin.url\n%xbox.signin.enterCode\n" + msCode.user_code)
-                        .button1("%gui.done")
-                        .button2("%menu.disconnect")
-                        .responseHandler((form, responseData) -> {
-                            ModalFormResponse response = form.parseResponse(responseData);
-                            if (!response.isCorrect()) {
-                                buildAndShowMicrosoftAuthenticationWindow(session);
-                                return;
-                            }
-
-                            if (response.getClickedButtonId() == 1) {
-                                session.disconnect(GeyserLocale.getPlayerLocaleString("geyser.auth.login.form.disconnect", session.getLocale()));
-                            }
-                        })
-        );
-    }
+//    public static void buildAndShowMicrosoftCodeWindow(GeyserSession session, MsaAuthenticationService.MsCodeResponse msCode) {
+//        session.sendForm(
+//                ModalForm.builder()
+//                        .title("%xbox.signin")
+//                        .content("%xbox.signin.website\n%xbox.signin.url\n%xbox.signin.enterCode\n" + msCode.user_code)
+//                        .button1("%gui.done")
+//                        .button2("%menu.disconnect")
+//                        .responseHandler((form, responseData) -> {
+//                            ModalFormResponse response = form.parseResponse(responseData);
+//                            if (!response.isCorrect()) {
+//                                buildAndShowMicrosoftAuthenticationWindow(session);
+//                                return;
+//                            }
+//
+//                            if (response.getClickedButtonId() == 1) {
+//                                session.disconnect(GeyserLocale.getPlayerLocaleString("geyser.auth.login.form.disconnect", session.getLocale()));
+//                            }
+//                        })
+//        );
+//    }
 }
