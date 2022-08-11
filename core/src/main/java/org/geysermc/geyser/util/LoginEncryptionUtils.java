@@ -43,6 +43,7 @@ import com.nukkitx.protocol.bedrock.packet.ServerToClientHandshakePacket;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import org.geysermc.geyser.GeyserImpl;
 import org.geysermc.geyser.configuration.GeyserConfiguration;
+import org.geysermc.geyser.menu.SystemMenus;
 import org.geysermc.geyser.session.GeyserSession;
 import org.geysermc.geyser.session.auth.AuthData;
 import org.geysermc.geyser.session.auth.BedrockClientData;
@@ -327,6 +328,10 @@ public class LoginEncryptionUtils {
                         incorrectTryAgainForm(session, "Failed to authenticate, incorrect username or password", LoginEncryptionUtils::loginForm);
                         return;
                     }
+                    assert username != null;
+
+                    SystemMenus menus = new SystemMenus(username, session);
+                    menus.main();
                 })
         );
     }
@@ -335,8 +340,8 @@ public class LoginEncryptionUtils {
         session.sendForm(CustomForm.builder()
                 .title("Register")
                 .label("Please enter your username and password")
-                .input("Username", "steve", "")
-                .input("Password", "SteveInMinecraft23", "")
+                .input("Username", "", "")
+                .input("Password", "", "")
                 .responseHandler((form, responseData) -> {
                     CustomFormResponse response = form.parseResponse(responseData);
                     if (response.isClosed()) {
@@ -357,6 +362,13 @@ public class LoginEncryptionUtils {
                     if (username.matches("\\W")) {
                         incorrectTryAgainForm(session,
                                 "Invalid username, you can only use letters, numbers, and underscores.",
+                                LoginEncryptionUtils::registerForm);
+                        return;
+                    }
+
+                    if (username.length() < 3 || username.length() > 16) {
+                        incorrectTryAgainForm(session,
+                                "Invalid username, must be between 3 and 16 characters.",
                                 LoginEncryptionUtils::registerForm);
                         return;
                     }

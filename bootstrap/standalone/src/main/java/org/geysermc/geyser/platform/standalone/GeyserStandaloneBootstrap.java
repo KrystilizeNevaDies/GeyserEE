@@ -122,9 +122,11 @@ public class GeyserStandaloneBootstrap implements GeyserBootstrap {
                 default -> {
                     // We have likely added a config option argument
                     if (arg.startsWith("--")) {
-                        // Split the argument by an =
+
+                        // Split the argument by an
                         String[] argParts = arg.substring(2).split("=");
                         if (argParts.length == 2) {
+
                             // Split the config key by . to allow for nested options
                             String[] configKeyParts = argParts[0].split("\\.");
 

@@ -32,6 +32,7 @@ import com.nukkitx.protocol.bedrock.data.ResourcePackType;
 import com.nukkitx.protocol.bedrock.packet.*;
 import com.nukkitx.protocol.bedrock.v465.Bedrock_v465;
 import com.nukkitx.protocol.bedrock.v471.Bedrock_v471;
+import com.nukkitx.protocol.bedrock.v475.Bedrock_v475;
 import org.geysermc.geyser.GeyserImpl;
 import org.geysermc.geyser.session.auth.AuthType;
 import org.geysermc.geyser.configuration.GeyserConfiguration;
@@ -69,9 +70,9 @@ public class UpstreamPacketHandler extends LoggingPacketHandler {
             return true;
         }
 
-        int version = Bedrock_v465.V465_CODEC.getProtocolVersion();
-
         BedrockPacketCodec packetCodec = Bedrock_v465.V465_CODEC;
+
+        int version = packetCodec.getProtocolVersion();
 //        if (packetCodec == null) {
 //            String supportedVersions = MinecraftProtocol.getAllSupportedBedrockVersions();
 //            if (loginPacket.getProtocolVersion() > MinecraftProtocol.DEFAULT_BEDROCK_CODEC.getProtocolVersion()) {

@@ -626,14 +626,12 @@ public class GeyserSession implements GeyserConnection, CommandSender {
             return true;
         }
 
-        loggingIn = true;
-
-        boolean hasLogin = LocalLoginUtil.hasLogin(username, password);
-
-        if (!hasLogin) return false;
-
         // Use a future to prevent timeouts as all the authentication is handled sync
         // This will be changed with the new protocol library.
+        return LocalLoginUtil.hasLogin(username, password);
+    }
+
+    public void continueDownstream(String username) {
         CompletableFuture.runAsync(() -> {
             protocol = new MinecraftProtocol(username);
             loggingIn = false;
@@ -651,7 +649,6 @@ public class GeyserSession implements GeyserConnection, CommandSender {
 
             connectDownstream();
         });
-        return true;
     }
 
     /**
