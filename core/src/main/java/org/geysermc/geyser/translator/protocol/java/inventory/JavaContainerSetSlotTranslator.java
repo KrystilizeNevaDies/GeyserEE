@@ -27,17 +27,16 @@ package org.geysermc.geyser.translator.protocol.java.inventory;
 
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.ItemStack;
 import com.github.steveice10.mc.protocol.data.game.recipe.Ingredient;
-import com.github.steveice10.mc.protocol.data.game.recipe.Recipe;
-import com.github.steveice10.mc.protocol.data.game.recipe.RecipeType;
-import com.github.steveice10.mc.protocol.data.game.recipe.data.ShapedRecipeData;
 import com.github.steveice10.mc.protocol.packet.ingame.clientbound.inventory.ClientboundContainerSetSlotPacket;
 import com.nukkitx.protocol.bedrock.data.inventory.ContainerId;
 import com.nukkitx.protocol.bedrock.data.inventory.CraftingData;
 import com.nukkitx.protocol.bedrock.data.inventory.ItemData;
 import com.nukkitx.protocol.bedrock.packet.CraftingDataPacket;
 import com.nukkitx.protocol.bedrock.packet.InventorySlotPacket;
+import org.geysermc.geyser.GeyserImpl;
 import org.geysermc.geyser.inventory.GeyserItemStack;
 import org.geysermc.geyser.inventory.Inventory;
+import org.geysermc.geyser.inventory.recipe.GeyserShapedRecipe;
 import org.geysermc.geyser.session.GeyserSession;
 import org.geysermc.geyser.translator.inventory.InventoryTranslator;
 import org.geysermc.geyser.translator.inventory.PlayerInventoryTranslator;
@@ -68,27 +67,41 @@ public class JavaContainerSetSlotTranslator extends PacketTranslator<Clientbound
         if (inventory == null)
             return;
 
-        // Intentional behavior here below the cursor; Minecraft 1.18.1 also does this.
-        int stateId = packet.getStateId();
-        session.setEmulatePost1_16Logic(stateId > 0 || stateId != inventory.getStateId());
-        inventory.setStateId(stateId);
-
         InventoryTranslator translator = session.getInventoryTranslator();
         if (translator != null) {
             if (session.getCraftingGridFuture() != null) {
                 session.getCraftingGridFuture().cancel(false);
             }
-            updateCraftingGrid(session, packet.getSlot(), packet.getItem(), inventory, translator);
+
+            int slot = packet.getSlot();
+            if (slot >= inventory.getSize()) {
+                GeyserImpl geyser = session.getGeyser();
+                geyser.getLogger().warning("ClientboundContainerSetSlotPacket sent to " + session.name()
+                        + " that exceeds inventory size!");
+                if (geyser.getConfig().isDebugMode()) {
+                    geyser.getLogger().debug(packet);
+                    geyser.getLogger().debug(inventory);
+                }
+                // 1.19.0 behavior: the state ID will not be set due to exception
+                return;
+            }
+
+            updateCraftingGrid(session, slot, packet.getItem(), inventory, translator);
 
             GeyserItemStack newItem = GeyserItemStack.from(packet.getItem());
             if (packet.getContainerId() == 0 && !(translator instanceof PlayerInventoryTranslator)) {
                 // In rare cases, the window ID can still be 0 but Java treats it as valid
-                session.getPlayerInventory().setItem(packet.getSlot(), newItem, session);
-                InventoryTranslator.PLAYER_INVENTORY_TRANSLATOR.updateSlot(session, session.getPlayerInventory(), packet.getSlot());
+                session.getPlayerInventory().setItem(slot, newItem, session);
+                InventoryTranslator.PLAYER_INVENTORY_TRANSLATOR.updateSlot(session, session.getPlayerInventory(), slot);
             } else {
-                inventory.setItem(packet.getSlot(), newItem, session);
-                translator.updateSlot(session, inventory, packet.getSlot());
+                inventory.setItem(slot, newItem, session);
+                translator.updateSlot(session, inventory, slot);
             }
+
+            // Intentional behavior here below the cursor; Minecraft 1.18.1 also does this.
+            int stateId = packet.getStateId();
+            session.setEmulatePost1_16Logic(stateId > 0 || stateId != inventory.getStateId());
+            inventory.setStateId(stateId);
         }
     }
 
@@ -165,9 +178,8 @@ public class JavaContainerSetSlotTranslator extends PacketTranslator<Clientbound
                 }
             }
 
-            ShapedRecipeData data = new ShapedRecipeData(width, height, "", javaIngredients, item);
             // Cache this recipe so we know the client has received it
-            session.getCraftingRecipes().put(newRecipeId, new Recipe(RecipeType.CRAFTING_SHAPED, uuid.toString(), data));
+            session.getCraftingRecipes().put(newRecipeId, new GeyserShapedRecipe(width, height, javaIngredients, item));
 
             CraftingDataPacket craftPacket = new CraftingDataPacket();
             craftPacket.getCraftingData().add(CraftingData.fromShaped(

@@ -23,27 +23,33 @@
  * @link https://github.com/GeyserMC/Geyser
  */
 
-package org.geysermc.geyser.translator.protocol.java.entity.spawn;
+package org.geysermc.geyser.entity.type.living.animal.horse;
 
-import com.github.steveice10.mc.protocol.packet.ingame.clientbound.entity.spawn.ClientboundAddPaintingPacket;
+import com.github.steveice10.mc.protocol.data.game.entity.player.Hand;
 import com.nukkitx.math.vector.Vector3f;
-import org.geysermc.geyser.entity.type.PaintingEntity;
+import org.geysermc.geyser.entity.EntityDefinition;
+import org.geysermc.geyser.inventory.GeyserItemStack;
 import org.geysermc.geyser.session.GeyserSession;
-import org.geysermc.geyser.translator.protocol.PacketTranslator;
-import org.geysermc.geyser.translator.protocol.Translator;
-import org.geysermc.geyser.level.PaintingType;
+import org.geysermc.geyser.util.InteractionResult;
+import org.geysermc.geyser.util.InteractiveTag;
 
-@Translator(packet = ClientboundAddPaintingPacket.class)
-public class JavaAddPaintingTranslator extends PacketTranslator<ClientboundAddPaintingPacket> {
+import javax.annotation.Nonnull;
+import java.util.UUID;
 
+public class SkeletonHorseEntity extends AbstractHorseEntity {
+    public SkeletonHorseEntity(GeyserSession session, int entityId, long geyserId, UUID uuid, EntityDefinition<?> definition, Vector3f position, Vector3f motion, float yaw, float pitch, float headYaw) {
+        super(session, entityId, geyserId, uuid, definition, position, motion, yaw, pitch, headYaw);
+    }
+
+    @Nonnull
     @Override
-    public void translate(GeyserSession session, ClientboundAddPaintingPacket packet) {
-        Vector3f position = Vector3f.from(packet.getPosition().getX(), packet.getPosition().getY(), packet.getPosition().getZ());
+    protected InteractiveTag testMobInteraction(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+        return testUndeadHorseInteraction(hand, itemInHand);
+    }
 
-        PaintingEntity entity = new PaintingEntity(session, packet.getEntityId(),
-                session.getEntityCache().getNextEntityId().incrementAndGet(), packet.getUuid(),
-                position, PaintingType.getByPaintingType(packet.getPaintingType()), packet.getDirection().getHorizontalIndex());
-
-        session.getEntityCache().spawnEntity(entity);
+    @Nonnull
+    @Override
+    protected InteractionResult mobInteract(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+        return undeadHorseInteract(hand, itemInHand);
     }
 }

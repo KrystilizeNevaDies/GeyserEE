@@ -26,18 +26,26 @@
 package org.geysermc.geyser.util;
 
 import com.github.steveice10.mc.protocol.data.game.entity.Effect;
+import com.github.steveice10.mc.protocol.data.game.entity.player.Hand;
 import com.github.steveice10.mc.protocol.data.game.entity.type.EntityType;
 import com.nukkitx.math.vector.Vector3f;
 import com.nukkitx.protocol.bedrock.data.entity.EntityData;
 import com.nukkitx.protocol.bedrock.data.entity.EntityFlag;
-import org.geysermc.geyser.entity.type.Entity;
 import org.geysermc.geyser.entity.EntityDefinitions;
+import org.geysermc.geyser.entity.type.BoatEntity;
+import org.geysermc.geyser.entity.type.Entity;
 import org.geysermc.geyser.entity.type.living.ArmorStandEntity;
 import org.geysermc.geyser.entity.type.living.animal.AnimalEntity;
+import org.geysermc.geyser.inventory.GeyserItemStack;
+import org.geysermc.geyser.session.GeyserSession;
 
 import java.util.Locale;
 
 public final class EntityUtils {
+    /**
+     * A constant array of the two hands that a player can interact with an entity.
+     */
+    public static final Hand[] HANDS = Hand.values();
 
     /**
      * @return a new String array of all known effect identifiers
@@ -65,6 +73,7 @@ public final class EntityUtils {
             case SLOW_FALLING -> 27;
             case BAD_OMEN -> 28;
             case HERO_OF_THE_VILLAGE -> 29;
+            case DARKNESS -> 30;
             default -> effect.ordinal() + 1;
         };
     }
@@ -78,7 +87,7 @@ public final class EntityUtils {
             case TRADER_LLAMA, LLAMA -> mountedHeightOffset = height * 0.6f;
             case MINECART, HOPPER_MINECART, TNT_MINECART, CHEST_MINECART, FURNACE_MINECART, SPAWNER_MINECART,
                     COMMAND_BLOCK_MINECART -> mountedHeightOffset = 0;
-            case BOAT -> mountedHeightOffset = -0.1f;
+            case BOAT, CHEST_BOAT -> mountedHeightOffset = -0.1f;
             case HOGLIN, ZOGLIN -> {
                 boolean isBaby = mount.getFlag(EntityFlag.BABY);
                 mountedHeightOffset = height - (isBaby ? 0.2f : 0.15f);
@@ -153,13 +162,14 @@ public final class EntityUtils {
                         xOffset = -0.6f;
                     }
                 }
+                case CHEST_BOAT -> xOffset = 0.15F;
                 case CHICKEN -> zOffset = -0.1f;
                 case TRADER_LLAMA, LLAMA -> zOffset = -0.3f;
             }
             if (passenger.getDefinition().entityType() == EntityType.SHULKER) {
                 switch (mount.getDefinition().entityType()) {
                     case MINECART, HOPPER_MINECART, TNT_MINECART, CHEST_MINECART, FURNACE_MINECART, SPAWNER_MINECART,
-                            COMMAND_BLOCK_MINECART, BOAT -> yOffset = 0.1875f;
+                            COMMAND_BLOCK_MINECART, BOAT, CHEST_BOAT -> yOffset = 0.1875f;
                 }
             }
             /*
@@ -175,7 +185,16 @@ public final class EntityUtils {
             }
             switch (mount.getDefinition().entityType()) {
                 case MINECART, HOPPER_MINECART, TNT_MINECART, CHEST_MINECART, FURNACE_MINECART, SPAWNER_MINECART,
-                        COMMAND_BLOCK_MINECART, BOAT -> yOffset -= mount.getDefinition().height() * 0.5f;
+                        COMMAND_BLOCK_MINECART, BOAT, CHEST_BOAT -> yOffset -= mount.getDefinition().height() * 0.5f;
+            }
+            if (passenger.getDefinition().entityType() == EntityType.FALLING_BLOCK) {
+                yOffset += 0.5f;
+            }
+            if (mount.getDefinition().entityType() == EntityType.ARMOR_STAND) {
+                ArmorStandEntity armorStand = (ArmorStandEntity) mount;
+                if (armorStand.isPositionRequiresOffset()) {
+                    yOffset -= EntityDefinitions.ARMOR_STAND.height() * (armorStand.isSmall() ? 0.55d : 1d);
+                }
             }
             Vector3f offset = Vector3f.from(xOffset, yOffset, zOffset);
             passenger.setRiderSeatPosition(offset);
@@ -183,7 +202,7 @@ public final class EntityUtils {
     }
 
     public static void updateRiderRotationLock(Entity passenger, Entity mount, boolean isRiding) {
-        if (isRiding && mount.getDefinition() == EntityDefinitions.BOAT) {
+        if (isRiding && mount instanceof BoatEntity) {
             // Head rotation is locked while riding in a boat
             passenger.getDirtyMetadata().put(EntityData.RIDER_ROTATION_LOCKED, (byte) 1);
             passenger.getDirtyMetadata().put(EntityData.RIDER_MAX_ROTATION, 90f);
@@ -195,6 +214,26 @@ public final class EntityUtils {
             passenger.getDirtyMetadata().put(EntityData.RIDER_MIN_ROTATION, 0f);
             passenger.getDirtyMetadata().put(EntityData.RIDER_ROTATION_OFFSET, 0f);
         }
+    }
+
+    /**
+     * Determine if an action would result in a successful bucketing of the given entity.
+     */
+    public static boolean attemptToBucket(GeyserSession session, GeyserItemStack itemInHand) {
+        return itemInHand.getJavaId() == session.getItemMappings().getStoredItems().waterBucket();
+    }
+
+    /**
+     * Attempt to determine the result of saddling the given entity.
+     */
+    public static InteractionResult attemptToSaddle(GeyserSession session, Entity entityToSaddle, GeyserItemStack itemInHand) {
+        if (itemInHand.getJavaId() == session.getItemMappings().getStoredItems().saddle()) {
+            if (!entityToSaddle.getFlag(EntityFlag.SADDLED) && !entityToSaddle.getFlag(EntityFlag.BABY)) {
+                // Saddle
+                return InteractionResult.SUCCESS;
+            }
+        }
+        return InteractionResult.PASS;
     }
 
     private EntityUtils() {

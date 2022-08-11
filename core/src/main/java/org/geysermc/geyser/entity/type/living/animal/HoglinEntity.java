@@ -49,11 +49,21 @@ public class HoglinEntity extends AnimalEntity {
 
     @Override
     protected boolean isShaking() {
-        return (!isImmuneToZombification && !session.isDimensionPiglinSafe()) || super.isShaking();
+        return (!isImmuneToZombification && !session.getDimensionType().piglinSafe()) || super.isShaking();
     }
 
     @Override
     public boolean canEat(String javaIdentifierStripped, ItemMapping mapping) {
         return javaIdentifierStripped.equals("crimson_fungus");
+    }
+
+    @Override
+    protected boolean canBeLeashed() {
+        return isNotLeashed();
+    }
+
+    @Override
+    protected boolean isEnemy() {
+        return true;
     }
 }

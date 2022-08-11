@@ -25,9 +25,9 @@
 
 package org.geysermc.geyser.translator.protocol.bedrock;
 
-import com.github.steveice10.mc.protocol.data.game.entity.metadata.Position;
 import com.github.steveice10.mc.protocol.packet.ingame.serverbound.inventory.ServerboundSetJigsawBlockPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.serverbound.level.ServerboundSignUpdatePacket;
+import com.nukkitx.math.vector.Vector3i;
 import com.nukkitx.nbt.NbtMap;
 import com.nukkitx.protocol.bedrock.packet.BlockEntityDataPacket;
 import org.geysermc.geyser.session.GeyserSession;
@@ -44,14 +44,8 @@ public class BedrockBlockEntityDataTranslator extends PacketTranslator<BlockEnti
         String id = tag.getString("id");
         if (id.equals("Sign")) {
             String text = tag.getString("Text");
-            // This is the reason why this all works - Bedrock sends packets every time you update the sign, Java only wants the final packet
-            // But Bedrock sends one final packet when you're done editing the sign, which should be equal to the last message since there's no edits
-            // So if the latest update does not match the last cached update then it's still being edited
-            if (!text.equals(session.getLastSignMessage())) {
-                session.setLastSignMessage(text);
-                return;
-            }
-            // Otherwise the two messages are identical and we can get to work deconstructing
+            // Note: as of 1.18.30, only one packet is sent from Bedrock when the sign is finished.
+            // Previous versions did not have this behavior.
             StringBuilder newMessage = new StringBuilder();
             // While Bedrock's sign lines are one string, Java's is an array of each line
             // (Initialized all with empty strings because it complains about null)
@@ -106,16 +100,13 @@ public class BedrockBlockEntityDataTranslator extends PacketTranslator<BlockEnti
             }
             // Put the final line on since it isn't done in the for loop
             if (iterator < lines.length) lines[iterator] = newMessage.toString();
-            Position pos = new Position(tag.getInt("x"), tag.getInt("y"), tag.getInt("z"));
+            Vector3i pos = Vector3i.from(tag.getInt("x"), tag.getInt("y"), tag.getInt("z"));
             ServerboundSignUpdatePacket signUpdatePacket = new ServerboundSignUpdatePacket(pos, lines);
             session.sendDownstreamPacket(signUpdatePacket);
 
-            // We set the sign text cached in the session to null to indicate there is no work-in-progress sign
-            session.setLastSignMessage(null);
-
         } else if (id.equals("JigsawBlock")) {
             // Client has just sent a jigsaw block update
-            Position pos = new Position(tag.getInt("x"), tag.getInt("y"), tag.getInt("z"));
+            Vector3i pos = Vector3i.from(tag.getInt("x"), tag.getInt("y"), tag.getInt("z"));
             String name = tag.getString("name");
             String target = tag.getString("target");
             String pool = tag.getString("target_pool");

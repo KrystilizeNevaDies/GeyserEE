@@ -211,6 +211,7 @@ public class GeyserStandaloneBootstrap implements GeyserBootstrap {
                 return;
             }
         }
+        geyserLogger.setDebug(geyserConfig.isDebugMode());
         GeyserConfiguration.checkGeyserConfiguration(geyserConfig, geyserLogger);
 
         // Allow libraries like Protocol to have their debug information passthrough
@@ -275,6 +276,12 @@ public class GeyserStandaloneBootstrap implements GeyserBootstrap {
     public Path getConfigFolder() {
         // Return the current working directory
         return Paths.get(System.getProperty("user.dir"));
+    }
+
+    @Override
+    public Path getSavedUserLoginsFolder() {
+        // Return the location of the config
+        return new File(configFilename).getAbsoluteFile().getParentFile().toPath();
     }
 
     @Override

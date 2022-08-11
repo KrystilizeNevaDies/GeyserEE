@@ -25,10 +25,8 @@
 
 package org.geysermc.geyser.entity.type.player;
 
-import com.github.steveice10.mc.auth.data.GameProfile;
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.EntityMetadata;
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.Pose;
-import com.github.steveice10.mc.protocol.data.game.entity.metadata.Position;
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.BooleanEntityMetadata;
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.ByteEntityMetadata;
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.FloatEntityMetadata;
@@ -37,8 +35,7 @@ import com.github.steveice10.mc.protocol.data.game.scoreboard.TeamColor;
 import com.github.steveice10.opennbt.tag.builtin.CompoundTag;
 import com.nukkitx.math.vector.Vector3f;
 import com.nukkitx.math.vector.Vector3i;
-import com.nukkitx.protocol.bedrock.data.AttributeData;
-import com.nukkitx.protocol.bedrock.data.PlayerPermission;
+import com.nukkitx.protocol.bedrock.data.*;
 import com.nukkitx.protocol.bedrock.data.command.CommandPermission;
 import com.nukkitx.protocol.bedrock.data.entity.EntityData;
 import com.nukkitx.protocol.bedrock.data.entity.EntityFlag;
@@ -60,16 +57,33 @@ import org.geysermc.geyser.translator.text.MessageTranslator;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Getter @Setter
 public class PlayerEntity extends LivingEntity {
     public static final float SNEAKING_POSE_HEIGHT = 1.5f;
+    protected static final List<AbilityLayer> BASE_ABILITY_LAYER;
 
-    private GameProfile profile;
+    static {
+        AbilityLayer abilityLayer = new AbilityLayer();
+        abilityLayer.setLayerType(AbilityLayer.Type.BASE);
+        Ability[] abilities = Ability.values();
+        Collections.addAll(abilityLayer.getAbilitiesSet(), abilities); // Apparently all the abilities you're working with
+        Collections.addAll(abilityLayer.getAbilityValues(), abilities); // Apparently all the abilities the player can work with
+        BASE_ABILITY_LAYER = Collections.singletonList(abilityLayer);
+    }
+
     private String username;
-    private boolean playerList = true;  // Player is in the player list
+    private boolean playerList = true; // Player is in the player list
+
+    /**
+     * The textures property from the GameProfile.
+     */
+    @Nullable
+    private String texturesProperty;
 
     private Vector3i bedPosition;
 
@@ -82,11 +96,12 @@ public class PlayerEntity extends LivingEntity {
      */
     private ParrotEntity rightParrot;
 
-    public PlayerEntity(GeyserSession session, int entityId, long geyserId, GameProfile gameProfile, Vector3f position, Vector3f motion, float yaw, float pitch, float headYaw) {
-        super(session, entityId, geyserId, gameProfile.getId(), EntityDefinitions.PLAYER, position, motion, yaw, pitch, headYaw);
+    public PlayerEntity(GeyserSession session, int entityId, long geyserId, UUID uuid, Vector3f position,
+                        Vector3f motion, float yaw, float pitch, float headYaw, String username, @Nullable String texturesProperty) {
+        super(session, entityId, geyserId, uuid, EntityDefinitions.PLAYER, position, motion, yaw, pitch, headYaw);
 
-        profile = gameProfile;
-        username = gameProfile.getName();
+        this.username = username;
+        this.texturesProperty = texturesProperty;
     }
 
     @Override
@@ -120,6 +135,8 @@ public class PlayerEntity extends LivingEntity {
         addPlayerPacket.getAdventureSettings().setPlayerPermission(PlayerPermission.MEMBER);
         addPlayerPacket.setDeviceId("");
         addPlayerPacket.setPlatformChatId("");
+        addPlayerPacket.setGameType(GameType.SURVIVAL); //TODO
+        addPlayerPacket.setAbilityLayers(BASE_ABILITY_LAYER); // Recommended to be added since 1.19.10, but only needed here for permissions viewing
         addPlayerPacket.getMetadata().putFlags(flags);
         dirtyMetadata.apply(addPlayerPacket.getMetadata());
 
@@ -161,6 +178,12 @@ public class PlayerEntity extends LivingEntity {
         }
 
         session.sendUpstreamPacket(movePlayerPacket);
+
+        if (teleported) {
+            // As of 1.19.0, head yaw seems to be ignored during teleports.
+            updateHeadLookRotation(headYaw);
+        }
+
         if (leftParrot != null) {
             leftParrot.moveAbsolute(position, yaw, pitch, headYaw, true, teleported);
         }
@@ -203,45 +226,8 @@ public class PlayerEntity extends LivingEntity {
         }
     }
 
-    @Override
-    public void updateHeadLookRotation(float headYaw) {
-        moveRelative(0, 0, 0, yaw, pitch, headYaw, onGround);
-        MovePlayerPacket movePlayerPacket = new MovePlayerPacket();
-        movePlayerPacket.setRuntimeEntityId(geyserId);
-        movePlayerPacket.setPosition(position);
-        movePlayerPacket.setRotation(getBedrockRotation());
-        movePlayerPacket.setMode(MovePlayerPacket.Mode.HEAD_ROTATION);
-        session.sendUpstreamPacket(movePlayerPacket);
-    }
-
-    @Override
-    public void updatePositionAndRotation(double moveX, double moveY, double moveZ, float yaw, float pitch, boolean isOnGround) {
-        moveRelative(moveX, moveY, moveZ, yaw, pitch, isOnGround);
-        if (leftParrot != null) {
-            leftParrot.moveRelative(moveX, moveY, moveZ, yaw, pitch, isOnGround);
-        }
-        if (rightParrot != null) {
-            rightParrot.moveRelative(moveX, moveY, moveZ, yaw, pitch, isOnGround);
-        }
-    }
-
-    @Override
-    public void updateRotation(float yaw, float pitch, boolean isOnGround) {
-        super.updateRotation(yaw, pitch, isOnGround);
-        // Both packets need to be sent or else player head rotation isn't correctly updated
-        MovePlayerPacket movePlayerPacket = new MovePlayerPacket();
-        movePlayerPacket.setRuntimeEntityId(geyserId);
-        movePlayerPacket.setPosition(position);
-        movePlayerPacket.setRotation(getBedrockRotation());
-        movePlayerPacket.setOnGround(isOnGround);
-        movePlayerPacket.setMode(MovePlayerPacket.Mode.HEAD_ROTATION);
-        session.sendUpstreamPacket(movePlayerPacket);
-        if (leftParrot != null) {
-            leftParrot.updateRotation(yaw, pitch, isOnGround);
-        }
-        if (rightParrot != null) {
-            rightParrot.updateRotation(yaw, pitch, isOnGround);
-        }
+    public void updateRotation(float yaw, float pitch, float headYaw, boolean isOnGround) {
+        moveRelative(0, 0, 0, yaw, pitch, headYaw, isOnGround);
     }
 
     @Override
@@ -250,7 +236,7 @@ public class PlayerEntity extends LivingEntity {
     }
 
     @Override
-    public Vector3i setBedPosition(EntityMetadata<Optional<Position>, ?> entityMetadata) {
+    public Vector3i setBedPosition(EntityMetadata<Optional<Vector3i>, ?> entityMetadata) {
         return bedPosition = super.setBedPosition(entityMetadata);
     }
 
@@ -292,7 +278,7 @@ public class PlayerEntity extends LivingEntity {
             }
             // The parrot is a separate entity in Bedrock, but part of the player entity in Java //TODO is a UUID provided in NBT?
             ParrotEntity parrot = new ParrotEntity(session, 0, session.getEntityCache().getNextEntityId().incrementAndGet(),
-                    null, EntityDefinitions.PARROT, position, motion, yaw, pitch, headYaw);
+                    null, EntityDefinitions.PARROT, position, motion, getYaw(), getPitch(), getHeadYaw());
             parrot.spawnEntity();
             parrot.getDirtyMetadata().put(EntityData.VARIANT, tag.get("Variant").getValue());
             // Different position whether the parrot is left or right

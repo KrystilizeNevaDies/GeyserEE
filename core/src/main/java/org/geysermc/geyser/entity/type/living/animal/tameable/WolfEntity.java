@@ -27,14 +27,20 @@ package org.geysermc.geyser.entity.type.living.animal.tameable;
 
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.ByteEntityMetadata;
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.IntEntityMetadata;
+import com.github.steveice10.mc.protocol.data.game.entity.player.Hand;
 import com.google.common.collect.ImmutableSet;
 import com.nukkitx.math.vector.Vector3f;
 import com.nukkitx.protocol.bedrock.data.entity.EntityData;
 import com.nukkitx.protocol.bedrock.data.entity.EntityFlag;
 import org.geysermc.geyser.entity.EntityDefinition;
+import org.geysermc.geyser.inventory.GeyserItemStack;
 import org.geysermc.geyser.session.GeyserSession;
 import org.geysermc.geyser.registry.type.ItemMapping;
+import org.geysermc.geyser.util.InteractionResult;
+import org.geysermc.geyser.util.InteractiveTag;
+import org.geysermc.geyser.util.ItemUtils;
 
+import javax.annotation.Nonnull;
 import java.util.Set;
 import java.util.UUID;
 
@@ -89,5 +95,46 @@ public class WolfEntity extends TameableEntity {
     public boolean canEat(String javaIdentifierStripped, ItemMapping mapping) {
         // Cannot be a baby to eat these foods
         return WOLF_FOODS.contains(javaIdentifierStripped) && !isBaby();
+    }
+
+    @Override
+    protected boolean canBeLeashed() {
+        return !getFlag(EntityFlag.ANGRY) && super.canBeLeashed();
+    }
+
+    @Nonnull
+    @Override
+    protected InteractiveTag testMobInteraction(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+        if (getFlag(EntityFlag.ANGRY)) {
+            return InteractiveTag.NONE;
+        }
+        if (itemInHand.getMapping(session).getJavaIdentifier().equals("minecraft:bone") && !getFlag(EntityFlag.TAMED)) {
+            // Bone and untamed - can tame
+            return InteractiveTag.TAME;
+        } else {
+            int color = ItemUtils.dyeColorFor(itemInHand.getJavaId());
+            if (color != -1) {
+                // If this fails, as of Java Edition 1.18.1, you cannot toggle sit/stand
+                if (color != this.collarColor) {
+                    return InteractiveTag.DYE;
+                }
+            } else if (getFlag(EntityFlag.TAMED) && ownerBedrockId == session.getPlayerEntity().getGeyserId()) {
+                // Tamed and owned by player - can sit/stand
+                return getFlag(EntityFlag.SITTING) ? InteractiveTag.STAND : InteractiveTag.SIT;
+            }
+        }
+        return super.testMobInteraction(hand, itemInHand);
+    }
+
+    @Nonnull
+    @Override
+    protected InteractionResult mobInteract(Hand hand, @Nonnull GeyserItemStack itemInHand) {
+        if (ownerBedrockId == session.getPlayerEntity().getGeyserId() || getFlag(EntityFlag.TAMED)
+                || itemInHand.getMapping(session).getJavaIdentifier().equals("minecraft:bone") && !getFlag(EntityFlag.ANGRY)) {
+            // Sitting toggle or feeding; not angry
+            return InteractionResult.CONSUME;
+        } else {
+            return InteractionResult.PASS;
+        }
     }
 }

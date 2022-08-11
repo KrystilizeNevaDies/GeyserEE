@@ -25,7 +25,6 @@
 
 package org.geysermc.geyser.translator.protocol.bedrock;
 
-import com.github.steveice10.mc.protocol.packet.ingame.serverbound.ServerboundChatPacket;
 import com.nukkitx.protocol.bedrock.packet.TextPacket;
 import org.geysermc.geyser.session.GeyserSession;
 import org.geysermc.geyser.text.ChatColor;
@@ -40,11 +39,8 @@ public class BedrockTextTranslator extends PacketTranslator<TextPacket> {
     public void translate(GeyserSession session, TextPacket packet) {
         String message = packet.getMessage();
 
-        if (message.isBlank()) {
-            // Java Edition (as of 1.17.1) just doesn't pass on these messages, so... we won't either!
-            return;
-        }
-
+        // The order here is important - strip out illegal characters first, then check if it's blank
+        // (in case the message is blank after removing)
         if (message.indexOf(ChatColor.ESCAPE) != -1) {
             // Filter out all escape characters - Java doesn't let you type these
             StringBuilder builder = new StringBuilder();
@@ -57,11 +53,15 @@ public class BedrockTextTranslator extends PacketTranslator<TextPacket> {
             message = builder.toString();
         }
 
+        if (message.isBlank()) {
+            // Java Edition (as of 1.17.1) just doesn't pass on these messages, so... we won't either!
+            return;
+        }
+
         if (MessageTranslator.isTooLong(message, session)) {
             return;
         }
 
-        ServerboundChatPacket chatPacket = new ServerboundChatPacket(message);
-        session.sendDownstreamPacket(chatPacket);
+        session.sendChat(message);
     }
 }
